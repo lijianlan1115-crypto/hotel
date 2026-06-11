@@ -133,7 +133,8 @@ def main() -> None:
         assert round(sum(float(item["weight"]) for item in result["module_scores"]), 2) == 100, result
         assert result["formula_source"] == "runtime/calculator.py", result
         assert result["data_source"] == "hotel_pricing_tables", result
-        assert len(result["execution_steps"]) == 7, result
+        assert len(result["execution_steps"]) == 8, result
+        assert result["execution_steps"][1]["step"] == "S01B_VALIDATE_DATA_SOURCE", result
         assert result["execution_steps"][-1]["step"] == "S07_VALIDATE_OUTPUT", result
         assert "【S14 酒店 OTA 诊断报告已生成】" in result["feishu_message"], result
         assert "报告链接：" in result["feishu_message"], result

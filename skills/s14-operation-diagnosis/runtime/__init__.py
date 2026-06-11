@@ -11,6 +11,7 @@ from typing import Any
 from .calculator import apply_cap_rules, calculate_all_modules
 from .data_fetcher import DataFetcher
 from .models import DiagnosisInput
+from .reply_formatter import format_feishu_message
 
 
 SKILL_ID = "s14-operation-diagnosis"
@@ -190,18 +191,16 @@ class S14OperationDiagnosis:
         ]
 
     def _build_feishu_message(self, request: DiagnosisInput, metrics: dict[str, Any], final_score: float, risk_level: str, report_url: str, data_source: str) -> str:
-        risk_text = {"high": "高风险", "medium": "中风险", "low": "低风险"}[risk_level]
         hotel_name = request.hotel_name or metrics.get("hotel_name") or request.hotel_id
-        return f"""【S14 酒店 OTA 诊断报告已生成】
-
-酒店：{hotel_name}
-周期：{request.period_start} 至 {request.period_end}
-综合得分：{final_score:.0f} / 100
-风险等级：{risk_text}
-
-报告链接：
-🔗点击查看报告： {report_url}
-"""
+        return format_feishu_message(
+            {
+                "hotel_name": hotel_name,
+                "period_start": str(request.period_start),
+                "period_end": str(request.period_end),
+                "final_score": final_score,
+                "report_url": report_url,
+            }
+        )
 
     def _calculated_fields(self) -> list[str]:
         return [
@@ -326,6 +325,7 @@ class S14OperationDiagnosis:
         risk_text = {"high": "高风险", "medium": "中风险", "low": "低风险"}[risk]
         data_source_label = "hotel_pricing 业务表" if metrics.get("source_tables") else "Excel上传" if metrics.get("data_source_mode") == "excel_upload" else "s14_operating_metrics 兼容表"
         cap_html = "".join(f"<li>{self._esc(cap)}</li>" for cap in caps) or "<li>本次未触发强封顶，继续关注数据新鲜度和字段完整度。</li>"
+        report_note = "本报告由 S14 OpenClaw 独立 Skill 生成；OpenClaw 只传控制字段，经营、OTA、推广、口碑数据均由 S14 从数据库或本次上传 Excel 读取。"
 
         module_rows = [["模块", "得分", "得分率", "状态", "核心依据"]]
         for item in module_scores:
@@ -421,8 +421,8 @@ class S14OperationDiagnosis:
 </html>"""
         report_path.write_text(html_text, encoding="utf-8")
         if request.public_base_url:
-            # Add timestamp query parameter to force cache refresh
-            report_url = f"{request.public_base_url.rstrip('/')}/{report_path.name}?t={ts}"
+            # Add run_id query parameter to force cache refresh.
+            report_url = f"{request.public_base_url.rstrip('/')}/{report_path.name}?run_id={ts}"
             return str(report_path), report_url
         return str(report_path), report_path.resolve().as_uri()
 
