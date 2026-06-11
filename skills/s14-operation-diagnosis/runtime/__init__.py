@@ -384,7 +384,7 @@ class S14OperationDiagnosis:
             ["P2", "门店店长", "完善图片、视频、房型卖点和入口标签", "页面质量、转化率", "14天"],
         ]
 
-        report_note = "本报告由 S14 OpenClaw 独立 Skill 生成；OpenClaw 只传控制字段，经营、OTA、推广、口碑数据均由 S14 从数据库读取。"
+        # report_note = "本报告由 S14 OpenClaw 独立 Skill 生成；OpenClaw 只传控制字段，经营、OTA、推广、口碑数据均由 S14 从数据库读取。"
 
         html_text = f"""<!doctype html>
 <html lang="zh-CN">
@@ -413,7 +413,7 @@ class S14OperationDiagnosis:
         </div><div class="cap-alert"><b>封顶/校准规则</b><span><ul>{cap_html}</ul></span><span class="status warn">按 S14 规则</span></div></div>
       </section>
       <section id="modules"><div class="section-head"><div><h2>模块得分条形图</h2><p>8个模块得分 / 权重 / 得分率，低于60%标红，60-79%标黄</p></div></div><div class="section-body">{self._render_table(module_rows)}</div></section>
-      <section id="metrics"><div class="section-head"><div><h2>经营指标表</h2><p>核心经营、流量和转化字段来自 S14 数据库</p></div></div><div class="section-body">{self._render_table(metric_rows)}</div></section>
+      <section id="metrics"><div class="section-head"><div><h2>经营指标表</h2></div></div><div class="section-body">{self._render_table(metric_rows)}</div></section>
       <section id="promotion"><div class="section-head"><div><h2>推广效率表</h2><p>推广金额、花费、ROI 和明细完整度</p></div></div><div class="section-body">{self._render_table(promo_rows)}</div></section>
       <section id="page"><div class="section-head"><div><h2>页面展示与入口基础</h2><p>图片、视频、卖点、入口标签</p></div></div><div class="section-body">{self._render_table(page_rows)}</div></section>
       <section id="reputation"><div class="section-head"><div><h2>口碑分析</h2><p>平台评分、差评率和未回复评价</p></div></div><div class="section-body">{self._render_table(reputation_rows)}</div></section>
