@@ -26,16 +26,14 @@ REQUIRED_FIELDS = (
 # 飞书固定模板：Bot/Agent 禁止改写。
 # 报告链接必须和 URL 在同一行，避免飞书把 URL 拆成普通文本而不能点击。
 FEISHU_TEMPLATE = (
-    "【S14 酒店 OTA 诊断报告已生成】\n"
+    "[S14 酒店 OTA 诊断报告已生成] \n"
     "\n"
-    "酒店：{hotel_name}\n"
-    "周期：{period_start} 至 {period_end}\n"
-    "综合得分：{final_score_int} / 100\n"
-    "风险等级：{risk_text}\n"
-    "报告链接：{report_url}\n"
-    "说明：当前为 S14 测试机器人返回结果，不影响正式酒店 OTA Agent。"
+    "酒店: {hotel_name}\n"
+    "周期: {period_start} 至 {period_end}\n"
+    "综合得分: {final_score_int} / 100\n"
+    "风险等级: {risk_text}\n"
+    "🔗点击查看报告: {report_url}\n"
 )
-
 _ALLOWED_RISK_LABELS = {"高风险", "中风险", "低风险"}
 
 
