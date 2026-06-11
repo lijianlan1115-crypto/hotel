@@ -9,6 +9,8 @@ __pycache__/
 
 data/
 logs/
+public/s14-reports/
+skills/s14-operation-diagnosis/outputs/
 *.sqlite
 *.sqlite3
 *.db
