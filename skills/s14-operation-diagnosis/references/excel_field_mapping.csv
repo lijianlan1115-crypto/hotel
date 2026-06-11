@@ -3,7 +3,7 @@ hotel_id,酒店ID|酒店编号|门店ID,string,控制,否,输入过滤/报告展
 hotel_name,酒店名称|门店名称|酒店,string,控制,否,报告展示,首个非空,全局,控制字段,否,全局展示字段,否,缺失时展示 hotel_id
 platform,诊断渠道|渠道|平台|OTA渠道,enum,控制,是,渠道过滤/渠道区分,按行过滤；multi 不过滤,日/周/月/诊断周期,控制字段,是,必须能映射 fliggy/meituan/ctrip/qunar/douyin/multi 或中文渠道,是,缺失时整份 Excel 使用输入 platform；多渠道文件必须提供
 channel_source,渠道来源|渠道名称|平台名称,string,控制,否,报告展示/渠道说明,首个非空,日/周/月/诊断周期,控制字段,是,与 platform 对应：飞猪/美团/携程/去哪儿/抖音/多渠道,建议,缺失时由 platform 自动映射中文
-data_date,日期|营业日期|业务日期|统计日期|data_date|biz_date,date,控制,是,周期过滤,按 period_start/period_end 过滤,日/周/月/诊断周期,用于过滤 period_start 至 period_end；日数据填具体日期，月数据可填月初或月末,是,同一 Excel 可包含多渠道多日期，需按日期过滤,建议,缺失时整份 Excel 视为本次周期数据
+data_date,日期|营业日期|业务日期|统计日期|data_date|biz_date|date,date,控制,是,周期过滤,按 period_start/period_end 过滤,日/周/月/诊断周期,用于过滤 period_start 至 period_end；日数据填具体日期，月数据可填月初或月末,是,同一 Excel 可包含多渠道多日期，需按日期过滤,建议,缺失时整份 Excel 视为本次周期数据
 time_grain,时间粒度|统计粒度|数据粒度|time_grain,enum,控制,是,判断指标行是日/周/月/诊断周期数据，影响聚合解释,首个非空/按行读取,日/周/月/诊断周期,可选；不填默认按 data_date 的行级数据处理,是,同一文件多渠道多粒度时必须每行明确渠道和时间粒度,建议,缺失默认daily
 period_start_field,开始日期|周期开始|统计开始日期|period_start_field,date,控制,是,Excel行级周期开始日期，适用于周/月/自定义周期数据,按 period_start/period_end 过滤,周/月/诊断周期,有周期汇总行时建议提供,是,按渠道和周期过滤,否,缺失时使用 data_date 或输入 period_start
 period_end_field,结束日期|周期结束|统计结束日期|period_end_field,date,控制,是,Excel行级周期结束日期，适用于周/月/自定义周期数据,按 period_start/period_end 过滤,周/月/诊断周期,有周期汇总行时建议提供,是,按渠道和周期过滤,否,缺失时使用 data_date 或输入 period_end

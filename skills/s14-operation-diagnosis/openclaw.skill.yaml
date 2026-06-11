@@ -19,7 +19,13 @@ triggers:
   reply_field: feishu_message
   entry_service_must_not_format_business_result: true
   agent_output_policy: "Agent 只能输出合法 JSON 对象，不得输出 Markdown、表格、解释文字或自然语言总结。"
-  reply_policy: "Python 必须先校验 Agent JSON，再调用 runtime/reply_formatter.py 生成固定飞书文本；JSON 不合法时返回：诊断结果格式异常，请重新生成。"
+  reply_policy: "Python 必须丢弃历史消息/旧 JSON/预拼 feishu_message，基于本次运行 result 调用 runtime/reply_formatter.py 生成固定飞书文本；JSON 不合法时返回：诊断结果格式异常，请重新生成。"
+  force_fresh_run: true
+  forbid_memory_result: true
+  forbid_previous_message_reuse: true
+  report_url_cache_busting: run_id
+  text_trigger_data_source: database
+  excel_trigger_data_source: excel_upload
 
 config:
   required:

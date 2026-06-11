@@ -68,12 +68,15 @@ input_extraction:
     days: 10
 
 reply_policy:
-  use_skill_field: feishu_message
+  use_adapter_method: build_feishu_reply
   bot_must_not_format_business_result: true
+  force_fresh_run: true
+  forbid_cached_agent_text: true
+  forbid_previous_message_reuse: true
   forbidden_bot_fields:
     - final_score
     - risk_level
     - module_scores
     - caps
     - missing_fields
-  note: "The entry service must send result.feishu_message directly."
+  note: "The entry service must call build_feishu_reply(result), discard cached text and old feishu_message, then send the returned fixed text."

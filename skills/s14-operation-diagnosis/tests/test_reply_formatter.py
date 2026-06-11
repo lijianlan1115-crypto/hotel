@@ -191,9 +191,13 @@ def test_build_feishu_reply_ignores_skill_message_field() -> None:
     bad_message = "飞猪诊断：68/100 中风险 | 仅上架 1 房型"
     result = dict(VALID_PAYLOAD, feishu_message=bad_message)
     rendered = build_feishu_reply(result)
-    assert rendered == EXPECTED_TEXT
+    assert "酒店：贵阳璞悦·奢电竞酒店" in rendered
+    assert "综合得分：68 / 100" in rendered
+    assert "风险等级：中风险" in rendered
+    assert "http://47.108.200.194:8088/s14-reports/ota_diagnosis_report_demo.html?run_id=" in rendered
     assert "飞猪诊断：" not in rendered
     assert "仅上架 1 房型" not in rendered
+    assert "run_id=" in rendered
 
 
 def test_build_feishu_reply_handles_invalid_payload() -> None:

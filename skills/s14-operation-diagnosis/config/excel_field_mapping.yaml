@@ -50,7 +50,7 @@ standard_fields:
   data_date:
     type: date
     required_for_excel: false
-    chinese_aliases: ["日期", "营业日期", "业务日期", "统计日期", "data_date", "biz_date"]
+    chinese_aliases: ["日期", "营业日期", "业务日期", "统计日期", "data_date", "biz_date", "date"]
   time_grain:
     type: enum
     required_for_excel: false

@@ -115,8 +115,10 @@ config/triggers.yaml
 ```
 
 The Feishu entry service or OpenClaw Agent should read that file and route
-matching messages to this Skill. After execution it should send
-`result["feishu_message"]` directly.
+matching messages to this Skill. After execution it must call
+`runtime/feishu_adapter.py::build_feishu_reply(result)` and send that returned
+text. Do not send cached Agent text or an old `result["feishu_message"]`
+directly.
 
 ## Database Contract
 

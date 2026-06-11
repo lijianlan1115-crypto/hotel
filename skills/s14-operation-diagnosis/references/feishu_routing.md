@@ -22,6 +22,8 @@ S14OperationDiagnosis(config).execute(inputs)
 
 5. Send **only** the fixed Feishu text produced by `runtime/reply_formatter.py`. Do
    not generate, rewrite, or supplement the message in the entry service.
+6. Every trigger must be a fresh run. Do not answer from previous Feishu
+   messages, Agent memory, cached JSON, or an old `result["feishu_message"]`.
 
 ## 飞书输出格式：必须固定（强制约束）
 
@@ -71,6 +73,9 @@ Python 用 send_text(open_id, reply) 把固定模板文本发到飞书
 - 禁止把 deepseek / qwen / gpt 等大模型原文（Markdown / 表格 / 自然语言）作为
   飞书消息发送。
 - 禁止在 Feishu Bot 代码里再写一份格式化函数或模板字符串。
+- 禁止发送“同份数据、无变化、第二轮数据”等历史会话总结；这些不是 S14 本次运行结果。
+- 禁止直接发送旧的 `result["feishu_message"]`；入口必须调用 `build_feishu_reply(result)`
+  重新生成本次固定模板。
 
 ### Agent JSON 契约（不可改）
 
@@ -94,7 +99,7 @@ from runtime import S14OperationDiagnosis
 from runtime.feishu_adapter import build_feishu_reply
 
 result = S14OperationDiagnosis(config).execute(inputs)
-reply = build_feishu_reply(result)  # 内部用 result["feishu_message"]
+reply = build_feishu_reply(result)  # 丢弃旧 feishu_message，用本次 result 重新渲染
 send_text(open_id, reply)
 ```
 
@@ -120,7 +125,8 @@ send_text(open_id, reply)
 ```python
 if should_route_to_s14(text):
     result = S14OperationDiagnosis(config).execute(inputs)
-    send_text(open_id, result["feishu_message"])
+    reply = build_feishu_reply(result)
+    send_text(open_id, reply)
 ```
 
 ## Current Local-Test Auto Trigger
@@ -136,7 +142,7 @@ if reply:
 ```
 
 `handle_feishu_text_message` 内部已经走 `format_feishu_message`，不再依赖 Agent
-拼接文本；如 Bot 仍要直接调 Agent JSON 链路，必须使用
+拼接文本，也不信任历史 `feishu_message`；如 Bot 仍要直接调 Agent JSON 链路，必须使用
 `build_feishu_reply_from_agent_output(agent_output)`。
 
 用户侧链路：
@@ -152,7 +158,7 @@ handle_feishu_text_message(text) 命中触发词
 ↓
 更新 ota_diagnosis_report_demo.html
 ↓
-Python 用 format_feishu_message 生成固定飞书文本
+Python 丢弃旧 feishu_message，用 format_feishu_message 生成固定飞书文本
 ↓
 飞书回复【S14 酒店 OTA 诊断报告已生成】+ 6 段固定模板
 ```
@@ -169,3 +175,6 @@ Python 用 format_feishu_message 生成固定飞书文本
   Markdown / emoji list to Feishu.
 - Do not rewrite `final_score`, `risk_text`, `report_url`, or any field in
   `format_feishu_message` output.
+- Do not reuse previous Feishu messages, cached Agent text, cached JSON, or old
+  report links. Every Feishu trigger must run S14 again and render the current
+  result through `build_feishu_reply`.

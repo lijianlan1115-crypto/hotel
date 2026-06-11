@@ -161,7 +161,6 @@ OpenClaw / 飞书 Bot 调用本 Skill 时只允许传控制字段，以及 Excel
 | `platform` | enum | `fliggy`、`meituan`、`ctrip`、`qunar`、`douyin`、`multi` |
 | `period_start` | date | 诊断开始日期 |
 | `period_end` | date | 诊断结束日期 |
-OpenClaw_123456
 
 禁止输入：
 
@@ -214,7 +213,7 @@ MySQL 生产：
 ```json
 {
   "db_kind": "mysql",
-  "db_dsn": "mysql://openclaw_user:OpenClaw_123456@47.108.200.194:3306/hotel_pricing",
+  "db_dsn": "mysql://user:password@db-host:3306/hotel_pricing",
   "report_output_dir": "/opt/openclaw/workspaces/s14-feishu-test/public/s14-reports",
   "public_base_url": "http://47.108.200.194:8088/s14-reports"
 }
@@ -222,7 +221,7 @@ MySQL 生产：
 
 数据库模式缺少 `db_dsn` 时必须失败。Excel 上传模式缺少 `input_excel_path` 时必须失败。两种模式都不允许降级为手工字段或上游 Skill 输出。
 
-飞书生产测试必须配置 `report_output_dir` 和 `public_base_url`。Skill 只负责把 HTML 写入 `report_output_dir` 并返回 `public_base_url/ota_diagnosis_report_demo.html`，不负责启动或打开 HTTP 端口。网页服务应由 Nginx 或 systemd 常驻托管。
+飞书生产测试必须配置 `report_output_dir` 和 `public_base_url`。Skill 只负责把 HTML 写入 `report_output_dir` 并返回报告 URL；入口层必须通过 `build_feishu_reply(result)` 重新渲染本次结果并追加本次 `run_id`，避免飞书或浏览器打开旧缓存。网页服务应由 Nginx 或 systemd 常驻托管。
 
 ## 数据库契约
 
@@ -400,7 +399,7 @@ ota_diagnosis_report_demo.html
 templates/ota_diagnosis_report_demo.template.html
 ```
 
-每次执行都会覆盖输出目录里的旧报告，避免飞书返回旧内容。
+每次执行都会重新生成报告。飞书入口必须把本次 `report_url` 交给 `build_feishu_reply(result)` 渲染，禁止复用历史消息、旧 JSON、旧 `feishu_message` 或上一轮报告链接。
 
 ## 飞书接入边界
 
@@ -439,6 +438,8 @@ S14 飞书输出格式**必须固定**，由 `runtime/reply_formatter.py` 单一
 - ❌ 禁止把 Agent 原文（如 deepseek 输出的 "飞猪诊断：68/100 中风险 | 仅上架 1 房型..."）作为飞书消息发送。
 - ❌ 禁止在 Feishu Bot 代码里再写一份 `format_feishu_message`、再写一份风险文案、再写一份模块表。
 - ❌ 禁止 Bot 修改综合得分、风险等级、报告链接、字段缺口，只允许原样转发 Python 拼好的文本。
+- ❌ 禁止发送“同份数据、无变化、第二轮数据”等历史会话总结；这些不是 S14 本次运行结果。
+- ❌ 禁止直接发送旧的 `result["feishu_message"]`；入口必须调用 `build_feishu_reply(result)` 丢弃旧消息并按本次 result 重新生成。
 
 飞书入口或 OpenClaw Agent 调用的**唯一正确示例**：
 
@@ -451,9 +452,9 @@ agent_output = call_s14_agent(inputs)  # 必须是 JSON 字符串
 reply = build_feishu_reply_from_agent_output(agent_output)
 send_text(open_id, reply)
 
-# 方式 B：直接走 S14 Skill，让 Python 一次性产出 feishu_message
+# 方式 B：直接走 S14 Skill，让 Python 按本次 result 产出固定飞书文本
 result = S14OperationDiagnosis(config).execute(inputs)
-reply = build_feishu_reply(result)  # 内部直接用 result["feishu_message"]
+reply = build_feishu_reply(result)  # 丢弃旧 feishu_message，用本次 result 重新渲染
 send_text(open_id, reply)
 ```
 
@@ -493,7 +494,7 @@ send_text(open_id, reply)
 - `period_start` / `period_end`：必须是 `YYYY-MM-DD`，来自 S14 入参。
 - `final_score`：必须是 0-100 的整数，由 S14 计算，Bot 不得改写。
 - `risk_text`：必须是 `高风险` / `中风险` / `低风险` 之一，由 `risk_label(score)` 计算。
-- `report_url`：必须是 S14 返回的报告链接，Bot 不得改写、缩短、附加参数。
+- `report_url`：必须是 S14 返回的报告链接，或由 `build_feishu_reply(result)` 统一追加本次 `run_id` 后的链接；Bot 不得自行改写、缩短、替换成旧链接。
 
 ### Agent JSON 契约（不可改）
 
