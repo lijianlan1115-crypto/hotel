@@ -115,15 +115,13 @@ def build_feishu_reply_from_agent_output(agent_output: str) -> str:
 
 
 def handle_feishu_text_message(text: str) -> str | None:
-    """Return reply text if this message should trigger S14, otherwise None."""
+    """文字触发时，永远走数据库模式，不读取上一次 Excel 结果。"""
 
     if not should_route_to_s14(text):
         return None
 
-    _control_inputs = build_control_inputs(text)
     result = run_s14_local_table_mode()
     return build_feishu_reply(result)
-
 
 def handle_feishu_excel(file_path: str) -> str:
     """Handle a downloaded Feishu Excel attachment.
