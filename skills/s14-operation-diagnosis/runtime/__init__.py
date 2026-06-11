@@ -382,8 +382,6 @@ class S14OperationDiagnosis:
             ["P1", "运营负责人", "检查曝光、浏览、支付转化和推广 ROI 的断点", "曝光、浏览、支付转化率、ROI", "7天"],
             ["P2", "门店店长", "完善图片、视频、房型卖点和入口标签", "页面质量、转化率", "14天"],
         ]
-"
-
         html_text = f"""<!doctype html>
 <html lang="zh-CN">
 <head>

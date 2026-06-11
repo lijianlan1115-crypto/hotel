@@ -23,16 +23,21 @@ REQUIRED_FIELDS = (
     "report_url",
 )
 
-# 飞书固定模板：Bot/Agent 禁止改写。
-# 报告链接必须和 URL 在同一行，避免飞书把 URL 拆成普通文本而不能点击。
+# 飞书固定模板：一字不能多、一字不能少。Bot/Agent 禁止改写。
+# 字段顺序：title / blank / hotel / period / score / risk / blank / link label /
+#           url / blank / footer。
 FEISHU_TEMPLATE = (
-    "[S14 酒店 OTA 诊断报告已生成] \n"
+    "【S14 酒店 OTA 诊断报告已生成】\n"
     "\n"
-    "酒店: {hotel_name}\n"
-    "周期: {period_start} 至 {period_end}\n"
-    "综合得分: {final_score_int} / 100\n"
-    "风险等级: {risk_text}\n"
-    "🔗点击查看报告: {report_url}\n"
+    "酒店：{hotel_name}\n"
+    "周期：{period_start} 至 {period_end}\n"
+    "综合得分：{final_score_int} / 100\n"
+    "风险等级：{risk_text}\n"
+    "\n"
+    "报告链接：\n"
+    "{report_url}\n"
+    "\n"
+    "说明：当前为 S14 测试机器人返回结果，不影响正式酒店 OTA Agent。"
 )
 _ALLOWED_RISK_LABELS = {"高风险", "中风险", "低风险"}
 
@@ -181,8 +186,12 @@ def _expected_payload_from_text(text: str) -> dict[str, Any]:
             match = re.match(r"^综合得分：(\d+) / 100$", line)
             if match:
                 payload["final_score"] = int(match.group(1))
-        elif line.startswith("报告链接："):
-            payload["report_url"] = line[len("报告链接："):].strip()
+    # 报告链接的位置是固定的："报告链接：" 行的下一行。
+    for i, line in enumerate(lines):
+        if line == "报告链接：":
+            if i + 1 < len(lines):
+                payload["report_url"] = lines[i + 1]
+            break
 
     for field in REQUIRED_FIELDS:
         if field not in payload:
