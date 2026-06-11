@@ -50,7 +50,17 @@ S14_PUBLIC_BASE_URL = os.environ.get(
     "S14_PUBLIC_BASE_URL",
     "http://47.108.200.194:8088/s14-reports",
 )
-
+def _select_platform_from_text(text: str) -> tuple[str, str]:
+    current = str(text or "")
+    if "美团" in current:
+        return "meituan", "美团"
+    if "携程" in current:
+        return "ctrip", "携程"
+    if "去哪儿" in current or "去哪" in current:
+        return "qunar", "去哪儿"
+    if "多渠道" in current or "全渠道" in current:
+        return "all", "多渠道"
+    return "fliggy", "飞猪"
 
 def _new_run_id() -> str:
     return datetime.now().strftime("%Y%m%d%H%M%S")
@@ -84,7 +94,7 @@ def _prepare_current_result(result: dict[str, Any]) -> dict[str, Any]:
     return prepared
 
 
-def run_s14_local_table_mode() -> dict[str, Any]:
+def run_s14_local_table_mode(text: str = "") -> dict[str, Any]:
     """Run S14 Skill via MySQL data source and return structured result."""
 
     if not S14_DB_DSN:
@@ -99,6 +109,7 @@ def run_s14_local_table_mode() -> dict[str, Any]:
     today = date.today()
     period_start = today - timedelta(days=9)
     period_end = today
+    platform, channel_source = _select_platform_from_text(text)
 
     diagnosis = S14OperationDiagnosis(
         {
@@ -112,7 +123,8 @@ def run_s14_local_table_mode() -> dict[str, Any]:
     return diagnosis.execute(
         {
             "hotel_id": "puyue",
-            "platform": "fliggy",
+            "platform": platform,
+            "channel_source": channel_source,
             "period_start": str(period_start),
             "period_end": str(period_end),
             "data_source_mode": "database",
@@ -161,7 +173,7 @@ def handle_feishu_text_message(text: str) -> str | None:
         return None
 
     try:
-        result = run_s14_local_table_mode()
+        result = run_s14_local_table_mode(text)
         return build_feishu_reply(result)
     except Exception:
         return FORMAT_ERROR_TEXT
