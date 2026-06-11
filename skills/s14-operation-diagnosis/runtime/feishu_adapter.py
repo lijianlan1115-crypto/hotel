@@ -115,28 +115,20 @@ def build_feishu_reply_from_agent_output(agent_output: str) -> str:
 
 
 def handle_feishu_text_message(text: str) -> str | None:
-    """文字触发时，永远走数据库模式，不读取上一次 Excel 结果。"""
+    """文字触发时，永远走数据库模式，并直接返回 S14 生成的飞书消息。"""
 
     if not should_route_to_s14(text):
         return None
 
     result = run_s14_local_table_mode()
+
+    if isinstance(result, dict) and result.get("feishu_message"):
+        return result["feishu_message"]
+
     return build_feishu_reply(result)
 
-
 def handle_feishu_excel(file_path: str) -> str:
-    """Handle a downloaded Feishu Excel attachment.
-
-    Feishu Gateway 需要先把 Excel 附件下载到服务器本地路径，
-    然后调用这个函数：
-
-        handle_feishu_excel("/tmp/xxx.xlsx")
-
-    本函数只负责：
-    1. 调用 S14 Excel 模式；
-    2. 生成 HTML 报告；
-    3. 返回固定飞书 6 段文本。
-    """
+    """Excel 上传时，永远走 Excel 模式，并直接返回 S14 生成的飞书消息。"""
 
     try:
         result = run_s14_from_excel(
@@ -147,7 +139,6 @@ def handle_feishu_excel(file_path: str) -> str:
             },
         )
 
-        # 优先使用 S14 已生成好的标准飞书消息
         if isinstance(result, dict) and result.get("feishu_message"):
             return result["feishu_message"]
 
