@@ -92,7 +92,7 @@ class S14OperationDiagnosis:
         })
 
         final_score, caps = apply_cap_rules(module_scores, metrics)
-        raw_score = round(sum(item.score for item in module_scores), 2)
+        raw_score = round(sum(round(item.score, 1) for item in module_scores), 1)
         execution_steps.append({
             "step": "S05_APPLY_CAP_RULES",
             "status": "ok",
