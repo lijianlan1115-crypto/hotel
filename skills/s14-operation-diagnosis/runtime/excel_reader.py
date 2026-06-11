@@ -112,7 +112,15 @@ def run_s14_from_excel(
     try:
         from . import S14OperationDiagnosis
     except ImportError:
-        from runtime import S14OperationDiagnosis
+        import importlib.util
+        from pathlib import Path
+
+        runtime_init = Path(__file__).resolve().parent / "__init__.py"
+        spec = importlib.util.spec_from_file_location("s14_runtime_local", runtime_init)
+        module = importlib.util.module_from_spec(spec)
+        assert spec and spec.loader
+        spec.loader.exec_module(module)
+        S14OperationDiagnosis = module.S14OperationDiagnosis
 
     runtime_config = config or {}
     inputs = build_excel_inputs(file_path)
