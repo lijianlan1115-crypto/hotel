@@ -11,7 +11,9 @@ def build_excel_inputs(file_path: str) -> dict[str, Any]:
     return {
         "hotel_id": "puyue",
         "hotel_name": "贵阳璞悦·奢电竞酒店",
-        "platform": "fliggy",
+        "platform": "multi",
+        "channel_source": "多渠道",
+        "channel_mode": "multi",
         "period_start": "2026-06-01",
         "period_end": "2026-06-10",
         "data_source_mode": "excel_upload",
