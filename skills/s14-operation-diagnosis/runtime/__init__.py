@@ -318,7 +318,7 @@ class S14OperationDiagnosis:
         
         # Generate unique filename with timestamp to avoid caching issues
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"s14_report_{ts}.html"
+        filename = "ota_diagnosis_report.html"
         report_path = output_dir / filename
 
         style = self._load_report_style()
