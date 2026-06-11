@@ -24,6 +24,14 @@ CHANNEL_KEYWORDS = {
 }
 
 
+DETECTED_META_KEYS = [
+    "detected_channels",
+    "detected_channel_labels",
+    "detected_channel_count",
+    "detected_channel_title",
+]
+
+
 def detect_channels_from_excel(file_path: str, max_rows: int = 30) -> list[str]:
     path = Path(file_path).expanduser().resolve()
 
@@ -91,7 +99,7 @@ def build_excel_inputs(file_path: str) -> dict[str, Any]:
         "dry_run": True,
     }
 
-    # 只新增字段，不覆盖原字段
+    # 只新增展示辅助字段，不覆盖原有字段
     inputs.update(detected_channel_summary)
 
     return inputs
@@ -108,4 +116,20 @@ def run_s14_from_excel(
 
     runtime_config = config or {}
     inputs = build_excel_inputs(file_path)
-    return S14OperationDiagnosis(runtime_config).execute(inputs)
+
+    diagnosis_inputs = dict(inputs)
+
+    # 新增字段不传给 DiagnosisInput，避免 unexpected field
+    detected_meta = {
+        key: diagnosis_inputs.pop(key)
+        for key in DETECTED_META_KEYS
+        if key in diagnosis_inputs
+    }
+
+    result = S14OperationDiagnosis(runtime_config).execute(diagnosis_inputs)
+
+    # 诊断结果如果是 dict，再把识别到的渠道信息补回去给页面/飞书使用
+    if isinstance(result, dict):
+        result.update(detected_meta)
+
+    return result
