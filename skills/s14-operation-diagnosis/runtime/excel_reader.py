@@ -25,17 +25,12 @@ CHANNEL_KEYWORDS = {
 
 
 def detect_channels_from_excel(file_path: str, max_rows: int = 30) -> list[str]:
-    """
-    从 Excel 的 sheet 名、表头、前 max_rows 行内容中自动识别 OTA 渠道。
-    识别到哪些渠道，报告就展示哪些渠道。
-    """
     path = Path(file_path).expanduser().resolve()
 
     if load_workbook is None:
         return []
 
     workbook = load_workbook(path, read_only=True, data_only=True)
-
     text_pool: list[str] = []
 
     try:
@@ -43,7 +38,6 @@ def detect_channels_from_excel(file_path: str, max_rows: int = 30) -> list[str]:
             text_pool.append(str(sheet_name))
 
             ws = workbook[sheet_name]
-
             for row in ws.iter_rows(max_row=max_rows, values_only=True):
                 for cell in row:
                     if cell is not None:
@@ -52,37 +46,23 @@ def detect_channels_from_excel(file_path: str, max_rows: int = 30) -> list[str]:
         workbook.close()
 
     full_text = " ".join(text_pool).lower()
-
     detected: list[str] = []
 
     for channel, keywords in CHANNEL_KEYWORDS.items():
-        for keyword in keywords:
-            if keyword.lower() in full_text:
-                detected.append(channel)
-                break
+        if any(keyword.lower() in full_text for keyword in keywords):
+            detected.append(channel)
 
     return detected
 
 
 def build_channel_summary(channels: list[str]) -> dict[str, Any]:
-    """
-    给报告顶部和后续渲染使用。
-    """
-    if not channels:
-        return {
-            "channel_mode": "unknown",
-            "channel_title": "未识别",
-            "channel_count": 0,
-            "channel_labels": [],
-        }
-
     labels = [CHANNEL_LABELS.get(channel, channel) for channel in channels]
 
     return {
-        "channel_mode": "single" if len(channels) == 1 else "multi",
-        "channel_title": " / ".join(labels),
-        "channel_count": len(channels),
-        "channel_labels": labels,
+        "detected_channels": channels,
+        "detected_channel_labels": labels,
+        "detected_channel_count": len(channels),
+        "detected_channel_title": " / ".join(labels) if labels else "",
     }
 
 
@@ -92,25 +72,17 @@ def build_excel_inputs(file_path: str) -> dict[str, Any]:
     if not path.exists():
         raise FileNotFoundError(f"Excel file not found: {path}")
 
-    channels = detect_channels_from_excel(str(path))
-    channel_summary = build_channel_summary(channels)
+    detected_channels = detect_channels_from_excel(str(path))
+    detected_channel_summary = build_channel_summary(detected_channels)
 
-    return {
+    inputs = {
         "hotel_id": "puyue",
         "hotel_name": "贵阳璞悦·奢电竞酒店",
 
-        # 兼容旧字段：以前只有 platform
-        "platform": "multi" if len(channels) != 1 else channels[0],
-
-        # 新字段：多渠道结构
-        "platforms": channels,
-        "channels": channels,
-
-        "channel_source": channel_summary["channel_title"],
-        "channel_mode": channel_summary["channel_mode"],
-        "channel_count": channel_summary["channel_count"],
-        "channel_labels": channel_summary["channel_labels"],
-        "channel_summary": channel_summary,
+        # 原有字段保持不变，避免影响之前功能
+        "platform": "multi",
+        "channel_source": "多渠道",
+        "channel_mode": "multi",
 
         "period_start": "2026-06-01",
         "period_end": "2026-06-10",
@@ -118,6 +90,11 @@ def build_excel_inputs(file_path: str) -> dict[str, Any]:
         "input_excel_path": str(path),
         "dry_run": True,
     }
+
+    # 只新增字段，不覆盖原字段
+    inputs.update(detected_channel_summary)
+
+    return inputs
 
 
 def run_s14_from_excel(
