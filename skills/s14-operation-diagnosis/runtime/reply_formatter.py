@@ -23,9 +23,8 @@ REQUIRED_FIELDS = (
     "report_url",
 )
 
-# 飞书固定模板：一字不能多、一字不能少。Bot/Agent 禁止改写。
-# 字段顺序：title / blank / hotel / period / score / risk / blank / link label /
-#           url / blank / footer。
+# 飞书固定模板：Bot/Agent 禁止改写。
+# 报告链接必须和 URL 在同一行，避免飞书把 URL 拆成普通文本而不能点击。
 FEISHU_TEMPLATE = (
     "【S14 酒店 OTA 诊断报告已生成】\n"
     "\n"
@@ -33,10 +32,7 @@ FEISHU_TEMPLATE = (
     "周期：{period_start} 至 {period_end}\n"
     "综合得分：{final_score_int} / 100\n"
     "风险等级：{risk_text}\n"
-    "\n"
-    "报告链接：\n"
-    "{report_url}\n"
-    "\n"
+    "报告链接：{report_url}\n"
     "说明：当前为 S14 测试机器人返回结果，不影响正式酒店 OTA Agent。"
 )
 
@@ -102,8 +98,7 @@ def _validate_data(data: Any) -> dict[str, Any]:
 
     score = _normalize_score(data["final_score"])
 
-    # 强制以分数计算风险等级，忽略任何 Agent 传进来的 risk_text，
-    # 避免 Agent 自由拼接"飞猪诊断：xx/100 | ..."中的中风险/低风险覆盖正确值。
+    # 强制以分数计算风险等级，忽略任何 Agent 传进来的 risk_text。
     risk_text = risk_label(score)
     if risk_text not in _ALLOWED_RISK_LABELS:
         raise ValueError(f"S14 risk_text must be one of {_ALLOWED_RISK_LABELS}")
@@ -158,13 +153,7 @@ def format_agent_json_output(agent_output: str) -> str:
 
 
 def assert_strict_feishu_format(text: str) -> None:
-    """Validate that ``text`` exactly matches the S14 fixed template.
-
-    The Bot MUST send text that passes this assertion. If the text contains
-    extra lines, emoji, module lists, or the Agent's free-form prose, this
-    function raises ``ValueError``. Used by tests and the strict entry
-    service.
-    """
+    """Validate that ``text`` exactly matches the S14 fixed template."""
 
     expected = format_feishu_message(_expected_payload_from_text(text))
     if text != expected:
@@ -175,12 +164,7 @@ def assert_strict_feishu_format(text: str) -> None:
 
 
 def _expected_payload_from_text(text: str) -> dict[str, Any]:
-    """Best-effort parser used by assert_strict_feishu_format on trusted text.
-
-    This is intentionally strict: the function is meant to be called only on
-    text that we already believe to come from ``format_feishu_message``. If
-    the text is malformed, the function raises.
-    """
+    """Best-effort parser used by assert_strict_feishu_format on trusted text."""
 
     lines = text.splitlines()
     payload: dict[str, Any] = {}
@@ -199,13 +183,8 @@ def _expected_payload_from_text(text: str) -> dict[str, Any]:
             match = re.match(r"^综合得分：(\d+) / 100$", line)
             if match:
                 payload["final_score"] = int(match.group(1))
-
-    # 报告链接的位置是固定的："报告链接：" 行的下一行。
-    for i, line in enumerate(lines):
-        if line == "报告链接：":
-            if i + 1 < len(lines):
-                payload["report_url"] = lines[i + 1]
-            break
+        elif line.startswith("报告链接："):
+            payload["report_url"] = line[len("报告链接："):].strip()
 
     for field in REQUIRED_FIELDS:
         if field not in payload:
