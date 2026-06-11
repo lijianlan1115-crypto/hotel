@@ -147,6 +147,12 @@ def handle_feishu_excel(file_path: str) -> str:
                 "public_base_url": S14_PUBLIC_BASE_URL,
             },
         )
+
+        # 优先使用 S14 已生成好的标准飞书消息
+        if isinstance(result, dict) and result.get("feishu_message"):
+            return result["feishu_message"]
+
         return build_feishu_reply(result)
+
     except Exception:
         return FORMAT_ERROR_TEXT
