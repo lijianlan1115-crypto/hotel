@@ -1,0 +1,15 @@
+{
+  "year": 2026,
+  "source": "project_harness_seed",
+  "days": [
+    { "date": "2026-01-01", "name": "元旦", "isOffDay": true },
+    { "date": "2026-02-14", "name": "春节调休上班", "holiday_group": "春节", "isOffDay": false, "is_adjusted_workday": true },
+    { "date": "2026-02-17", "name": "春节", "holiday_group": "春节", "isOffDay": true },
+    { "date": "2026-02-18", "name": "春节", "holiday_group": "春节", "isOffDay": true },
+    { "date": "2026-02-19", "name": "春节", "holiday_group": "春节", "isOffDay": true },
+    { "date": "2026-02-20", "name": "春节", "holiday_group": "春节", "isOffDay": true },
+    { "date": "2026-02-21", "name": "春节", "holiday_group": "春节", "isOffDay": true },
+    { "date": "2026-02-22", "name": "春节", "holiday_group": "春节", "isOffDay": true },
+    { "date": "2026-02-23", "name": "春节", "holiday_group": "春节", "isOffDay": true }
+  ]
+}

@@ -1,0 +1,78 @@
+[
+  {
+    "id": "s5-s6-init-db",
+    "command": ["python", "runtime/hotel_ota_runtime.py", "--db", "${DB}", "init-db"],
+    "expect": { "status": "ok" }
+  },
+  {
+    "id": "s5-s6-seed-demo",
+    "command": ["python", "runtime/hotel_ota_runtime.py", "--db", "${DB}", "seed-demo"],
+    "expect": { "status": "ok" }
+  },
+  {
+    "id": "s5-expected-occupancy-db-disabled",
+    "command": ["python", "runtime/hotel_ota_runtime.py", "--db", "${DB}", "expected-occupancy", "--hotel-id", "puyue", "--date", "2026-06-08"],
+    "env": {
+      "HOTEL_OTA_DB_SOURCE_ENABLE": "0"
+    },
+    "expect": {
+      "status": "data_gap",
+      "json_path": {
+        "expected_occupancy_status": "missing_database_source",
+        "pricing_blocked_reason": "expected_occupancy_requires_reservation_and_stayover_data"
+      },
+      "forbid_text": ["正式调价建议"]
+    }
+  },
+  {
+    "id": "s5-baseline-price-db-disabled",
+    "command": ["python", "runtime/hotel_ota_runtime.py", "--db", "${DB}", "baseline-price", "--hotel-id", "puyue", "--date", "2026-06-08"],
+    "env": {
+      "HOTEL_OTA_DB_SOURCE_ENABLE": "0"
+    },
+    "expect": {
+      "status": "data_gap",
+      "json_path": {
+        "pricing_blocked_reason": "baseline_price_requires_order_and_price_history"
+      }
+    }
+  },
+  {
+    "id": "s5-revenue-decision-blocks-without-expected-occupancy",
+    "command": ["python", "runtime/hotel_ota_runtime.py", "--db", "${DB}", "revenue-decision", "--hotel-id", "puyue"],
+    "env": {
+      "HOTEL_OTA_DB_SOURCE_ENABLE": "0"
+    },
+    "expect": {
+      "status": "data_gap",
+      "json_path": {
+        "decision.actions.0.type": "pricing_data_gap",
+        "decision.actions.0.blocked_reason": "expected_occupancy_requires_reservation_and_stayover_data",
+        "decision.approval_required": false
+      },
+      "contains_text": ["实时在住率、昨日出租率或 sample 数据不得作为调价依据"]
+    }
+  },
+  {
+    "id": "s6-operator-dry-run-guard-missing",
+    "command": ["python", "runtime/hotel_ota_runtime.py", "--db", "${DB}", "execute-price", "--hotel-id", "puyue", "--room-type-id", "UNKNOWN", "--channel", "Mtop", "--normal-price", "159", "--begin-date", "2026-02-17", "--end-date", "2026-02-17", "--user-role", "operator", "--dry-run", "--no-log"],
+    "expect": {
+      "status": "dry_run",
+      "json_path": {
+        "reason": "price_guard_config_missing"
+      }
+    }
+  },
+  {
+    "id": "s6-dry-run-ota-price-model",
+    "command": ["python", "runtime/hotel_ota_runtime.py", "--db", "${DB}", "execute-price", "--hotel-id", "puyue", "--room-type-id", "KING", "--channel", "Mtop", "--normal-price", "200", "--begin-date", "2026-02-17", "--end-date", "2026-02-17", "--user-role", "operator", "--dry-run", "--no-log", "--activity-discount-factors", "0.9,0.95", "--pms-price", "188"],
+    "expect": {
+      "status": "dry_run",
+      "json_path": {
+        "price_model.price_target_type": "ota_backend_base_price",
+        "price_model.ota_estimated_final_price": 171.0,
+        "price_model.pms_price_used_for_execution": false
+      }
+    }
+  }
+]

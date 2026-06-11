@@ -1,0 +1,81 @@
+skill_id: s14-operation-diagnosis
+name: S14 Hotel OTA Operation Diagnosis
+version: 1.0.0
+description: "Independent OpenClaw Skill for hotel OTA operation diagnosis."
+
+entrypoint:
+  language: python
+  file: runtime/__init__.py
+  class: S14OperationDiagnosis
+  method: execute
+
+schemas:
+  input: references/input_schema.json
+  output: references/output_schema.json
+
+triggers:
+  file: config/triggers.yaml
+  routing_doc: references/feishu_routing.md
+  reply_field: feishu_message
+  entry_service_must_not_format_business_result: true
+  agent_output_policy: "Agent 只能输出合法 JSON 对象，不得输出 Markdown、表格、解释文字或自然语言总结。"
+  reply_policy: "Python 必须先校验 Agent JSON，再调用 runtime/reply_formatter.py 生成固定飞书文本；JSON 不合法时返回：诊断结果格式异常，请重新生成。"
+
+config:
+  required:
+    - report_output_dir
+    - public_base_url
+  optional:
+    - db_kind
+    - db_dsn
+    - report_output_dir
+    - public_base_url
+  conditional_required:
+    database:
+      - db_kind
+      - db_dsn
+    excel_upload:
+      - input_excel_path
+  example:
+    db_kind: mysql
+    db_dsn: mysql://user:password@127.0.0.1:3306/hotel_pricing
+    report_output_dir: /opt/openclaw/workspaces/hotel-ota-ai/public/s14-reports
+    public_base_url: http://47.108.200.194:8088/s14-reports
+
+data_policy:
+  independence: true
+  controlled_source_only: true
+  supported_sources:
+    - database
+    - excel_upload
+  forbid_upstream_skill_output: true
+  forbidden_input_fields:
+    - metrics
+    - business_fields
+    - json_payload
+    - manual_diagnosis_input
+    - upstream_skill_output
+
+runtime_files:
+  - runtime/__init__.py
+  - runtime/models.py
+  - runtime/calculator.py
+  - runtime/data_fetcher.py
+  - runtime/router.py
+  - config/fields.yaml
+  - config/hotel_pricing_sources.yaml
+  - config/triggers.yaml
+
+artifacts:
+  report_file_name: ota_diagnosis_report_demo.html
+  report_type: html
+  url_policy: "Return public_base_url/report_file_name. Do not start HTTP servers from the Skill."
+
+safety:
+  dry_run_default: true
+  approval_required: true
+  forbidden_actions:
+    - price_write
+    - inventory_write
+    - promotion_write
+    - review_reply_publish

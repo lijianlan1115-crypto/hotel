@@ -1,0 +1,228 @@
+# S14 Excel upload field mapping.
+# Uploaded Excel files may use Chinese headers. The runtime maps these headers
+# into the same normalized business fields used by database mode and formulas.
+
+schema_version: 1
+mapping_owner: runtime/data_fetcher.py
+
+required_control_fields:
+  - hotel_id
+  - platform
+  - period_start
+  - period_end
+
+excel_upload_policy:
+  allowed_input_field: input_excel_path
+  allowed_file_extensions: [".xlsx", ".xlsm"]
+  channel_policy:
+    must_distinguish_channel: true
+    channel_fields: [platform, channel_source]
+    single_channel_fallback: "When Excel has no platform/channel_source column, the whole workbook is treated as the input platform."
+    multi_channel_requirement: "When platform=multi or one workbook contains multiple channels, Excel must provide platform or channel_source per row."
+  forbidden_direct_fields:
+    - metrics
+    - business_fields
+    - upstream_skill_output
+  normalize_then_calculate: true
+  formula_file: runtime/calculator.py
+
+standard_fields:
+  hotel_id:
+    type: string
+    required_for_excel: false
+    chinese_aliases: ["酒店ID", "酒店编号", "门店ID"]
+  hotel_name:
+    type: string
+    required_for_excel: false
+    chinese_aliases: ["酒店名称", "门店名称", "酒店"]
+  platform:
+    type: enum
+    required_for_excel: true
+    channel_field: true
+    distinguish_channel: true
+    chinese_aliases: ["诊断渠道", "渠道", "平台", "OTA渠道"]
+  channel_source:
+    type: string
+    required_for_excel: false
+    channel_field: true
+    distinguish_channel: true
+    chinese_aliases: ["渠道来源", "渠道名称", "平台名称"]
+  data_date:
+    type: date
+    required_for_excel: false
+    chinese_aliases: ["日期", "营业日期", "业务日期", "统计日期", "data_date", "biz_date"]
+  time_grain:
+    type: enum
+    required_for_excel: false
+    chinese_aliases: ["时间粒度", "统计粒度", "数据粒度", "time_grain"]
+  period_start_field:
+    type: date
+    required_for_excel: false
+    chinese_aliases: ["开始日期", "周期开始", "统计开始日期", "period_start_field"]
+  period_end_field:
+    type: date
+    required_for_excel: false
+    chinese_aliases: ["结束日期", "周期结束", "统计结束日期", "period_end_field"]
+
+  revpar:
+    type: number
+    module: M01
+    required_for_excel: true
+    chinese_aliases: ["RevPAR", "revpar", "平均可出租客房收入", "每间可售房收入"]
+  adr:
+    type: number
+    module: M01
+    required_for_excel: true
+    chinese_aliases: ["ADR", "adr", "平均房价", "平均房费", "销售均价"]
+  occupancy:
+    type: ratio
+    module: M01
+    required_for_excel: true
+    chinese_aliases: ["出租率", "入住率", "过夜出租率", "occupancy"]
+  room_revenue:
+    type: number
+    module: M01
+    required_for_excel: false
+    chinese_aliases: ["门店收入", "房费收入", "PMS房费收入", "销售额", "room_revenue"]
+  sold_room_nights:
+    type: number
+    module: M01
+    required_for_excel: false
+    chinese_aliases: ["已售间夜", "出租间夜", "入住间夜", "PMS已售间夜", "sold_room_nights"]
+  available_room_nights:
+    type: number
+    module: M01
+    required_for_excel: true
+    chinese_aliases: ["可售间夜", "可售房晚", "可售房量", "available_room_nights"]
+  lost_orders:
+    type: number
+    module: M01
+    required_for_excel: false
+    chinese_aliases: ["流失订单数", "流失订单", "lost_orders"]
+  lost_amount:
+    type: number
+    module: M01
+    required_for_excel: false
+    chinese_aliases: ["流失金额", "流失损失", "lost_amount"]
+
+  exposure:
+    type: number
+    module: M02
+    required_for_excel: true
+    chinese_aliases: ["曝光", "曝光量", "列表曝光", "推广曝光", "exposure"]
+  views:
+    type: number
+    module: M02
+    required_for_excel: true
+    chinese_aliases: ["浏览", "浏览量", "详情浏览", "访客数", "views"]
+  peer_rank:
+    type: ratio
+    module: M02
+    required_for_excel: false
+    chinese_aliases: ["竞争排名分位", "同行排名", "peer_rank"]
+
+  booking_conversion_rate:
+    type: ratio
+    module: M03
+    required_for_excel: false
+    chinese_aliases: ["预订转化率", "曝光-浏览转化", "曝光浏览转化率", "booking_conversion_rate"]
+  payment_conversion_rate:
+    type: ratio
+    module: M03
+    required_for_excel: true
+    chinese_aliases: ["支付转化率", "浏览-支付转化", "浏览支付转化率", "payment_conversion_rate"]
+
+  price_completeness:
+    type: ratio
+    module: M04
+    required_for_excel: false
+    chinese_aliases: ["价格完整度", "价格字段完整度", "price_completeness"]
+  inventory_health_rate:
+    type: ratio
+    module: M04
+    required_for_excel: false
+    chinese_aliases: ["库存健康率", "房态健康率", "inventory_health_rate"]
+  room_type_health_rate:
+    type: ratio
+    module: M04
+    required_for_excel: false
+    chinese_aliases: ["房型健康率", "房型结构健康率", "room_type_health_rate"]
+
+  promo_amount:
+    type: number
+    module: M05
+    required_for_excel: false
+    chinese_aliases: ["推广订单金额", "推广预订金额", "推广成交金额", "promo_amount"]
+  promo_cost:
+    type: number
+    module: M05
+    required_for_excel: false
+    chinese_aliases: ["推广花费", "总花费", "广告花费", "promo_cost"]
+  promo_roi:
+    type: number
+    module: M05
+    required_for_excel: false
+    chinese_aliases: ["ROI", "推广ROI", "promo_roi"]
+  promo_detail_ready:
+    type: boolean
+    module: M05
+    required_for_excel: false
+    chinese_aliases: ["推广明细是否完整", "推广明细", "promo_detail_ready"]
+
+  image_quality_rating:
+    type: enum
+    module: M06
+    required_for_excel: false
+    chinese_aliases: ["图片质量评级", "图片质量", "image_quality_rating"]
+  video_status:
+    type: enum
+    module: M06
+    required_for_excel: false
+    chinese_aliases: ["视频状态", "video_status"]
+  room_selling_point_status:
+    type: enum
+    module: M06
+    required_for_excel: false
+    chinese_aliases: ["房型卖点状态", "房型卖点", "room_selling_point_status"]
+  entry_tag_quality:
+    type: enum
+    module: M06
+    required_for_excel: false
+    chinese_aliases: ["入口标签质量", "入口标签", "entry_tag_quality"]
+
+  rating_total:
+    type: number
+    module: M07
+    required_for_excel: true
+    chinese_aliases: ["平台评分", "评分", "点评分", "rating_total"]
+  bad_review_rate:
+    type: ratio
+    module: M07
+    required_for_excel: false
+    chinese_aliases: ["差评率", "低分评价率", "bad_review_rate"]
+  unreplied_reviews:
+    type: number
+    module: M07
+    required_for_excel: false
+    chinese_aliases: ["未回复评价", "未回复评价数", "unreplied_reviews"]
+
+  completed_actions:
+    type: string
+    module: M08
+    required_for_excel: false
+    chinese_aliases: ["已完成动作", "已完成整改", "completed_actions"]
+  pending_actions:
+    type: string
+    module: M08
+    required_for_excel: false
+    chinese_aliases: ["待完成动作", "待整改动作", "pending_actions"]
+  review_reason:
+    type: string
+    module: M08
+    required_for_excel: false
+    chinese_aliases: ["复盘原因", "异常原因", "review_reason"]
+  field_completeness:
+    type: ratio
+    module: M08
+    required_for_excel: false
+    chinese_aliases: ["字段完整度", "数据完整度", "field_completeness"]

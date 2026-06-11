@@ -1,0 +1,54 @@
+[
+  {
+    "id": "s4-market-init-db",
+    "command": ["python", "runtime/hotel_ota_runtime.py", "--db", "${DB}", "init-db"],
+    "expect": { "status": "ok" }
+  },
+  {
+    "id": "s4-market-sync-calendar",
+    "command": ["python", "runtime/hotel_ota_runtime.py", "--db", "${DB}", "calendar-sync", "--year", "2026", "--seed-file", "${ROOT}/tests/harness/fixtures/holiday_2026.json"],
+    "expect": { "status": "ok" }
+  },
+  {
+    "id": "s4-market-weather-only-blocks-downstream",
+    "command": ["python", "runtime/hotel_ota_runtime.py", "--db", "${DB}", "market-context", "--hotel-id", "puyue", "--date", "2026-02-14", "--weather-fixture", "${ROOT}/tests/harness/fixtures/wttr_success.json"],
+    "expect": {
+      "status": "data_gap",
+      "json_path": {
+        "calendar_context.is_adjusted_workday": true,
+        "weather_context.status": "ok",
+        "weather_context.source": "weather_fixture",
+        "weather_context.source_quality": "fixture",
+        "downstream_allowed": false,
+        "downstream_blocked_reason": "missing_fresh_operating_progress",
+        "approval_allowed": false
+      },
+      "forbid_text": ["正式审批"]
+    }
+  },
+  {
+    "id": "s4-market-timeout-blocks-downstream",
+    "command": ["python", "runtime/hotel_ota_runtime.py", "--db", "${DB}", "market-context", "--hotel-id", "puyue", "--date", "2026-02-17", "--weather-fixture", "${ROOT}/tests/harness/fixtures/wttr_timeout.json", "--operating-fixture", "${ROOT}/tests/harness/fixtures/s2_fresh_snapshot.json", "--progress-fixture", "${ROOT}/tests/harness/fixtures/s16_fresh_progress.json"],
+    "expect": {
+      "status": "data_gap",
+      "json_path": {
+        "weather_context.status": "unavailable",
+        "downstream_allowed": false,
+        "downstream_blocked_reason": "weather_context_unavailable"
+      }
+    }
+  },
+  {
+    "id": "s4-market-fresh-context-allows-next-skill-only",
+    "command": ["python", "runtime/hotel_ota_runtime.py", "--db", "${DB}", "market-context", "--hotel-id", "puyue", "--date", "2026-02-17", "--weather-fixture", "${ROOT}/tests/harness/fixtures/wttr_success.json", "--operating-fixture", "${ROOT}/tests/harness/fixtures/s2_fresh_snapshot.json", "--progress-fixture", "${ROOT}/tests/harness/fixtures/s16_fresh_progress.json"],
+    "expect": {
+      "status": "ok",
+      "json_path": {
+        "downstream_allowed": true,
+        "next_skill": "S5",
+        "approval_allowed": false,
+        "demand_signal": "strong"
+      }
+    }
+  }
+]

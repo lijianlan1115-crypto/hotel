@@ -1,0 +1,224 @@
+{
+  "version": 2,
+  "description": "Database data source mapping template. Copy to /etc/hotel-ota-ai/database-source.json before adding real DSN, table names, hotel aliases, or private field mappings.",
+  "readonly": true,
+  "default_profile": "report_mysql_prod",
+  "profiles": {
+    "report_mysql_prod": {
+      "db_kind": "mysql",
+      "dsn_env": "HOTEL_OTA_DB_DSN",
+      "hotel_ids": {
+        "puyue": {
+          "hotel_name": "replace-with-report-hotel-name"
+        }
+      },
+      "tables": {
+        "import_batches": "import_batches",
+        "room_fee_daily": "fact_room_fee_daily",
+        "room_status_snapshot": "fact_room_status_snapshot",
+        "daily_metrics": "fact_daily_metrics",
+        "monthly_metrics": "fact_monthly_metrics",
+        "operating_snapshot": "operating_snapshot",
+        "price_data": "price_data",
+        "demand_context": "demand_context",
+        "operation_diagnosis": "operation_diagnosis",
+        "sales_baseline": "sales_baseline",
+        "reservation_snapshot": "jd01_bookings",
+        "stayover_snapshot": "jd04_extensions"
+      },
+      "columns": {
+        "import_batches": {
+          "id": "id",
+          "report_code": "report_code",
+          "report_name": "report_name",
+          "source_file": "source_file",
+          "hotel_name": "hotel_name",
+          "report_date": "report_date",
+          "report_month": "report_month",
+          "snapshot_time": "snapshot_time",
+          "imported_at": "imported_at"
+        },
+        "room_status_snapshot": {
+          "id": "id",
+          "import_batch_id": "import_batch_id",
+          "hotel_name": "hotel_name",
+          "snapshot_time": "snapshot_time",
+          "room_type": "room_type",
+          "room_no": "room_no",
+          "room_status": "room_status",
+          "created_at": "created_at"
+        },
+        "daily_metrics": {
+          "id": "id",
+          "import_batch_id": "import_batch_id",
+          "hotel_name": "hotel_name",
+          "business_date": "business_date",
+          "metric_group": "metric_group",
+          "metric_item": "metric_item",
+          "metric_name": "metric_name",
+          "metric_value": "metric_value",
+          "period_type": "period_type",
+          "created_at": "created_at"
+        },
+        "monthly_metrics": {
+          "id": "id",
+          "import_batch_id": "import_batch_id",
+          "hotel_name": "hotel_name",
+          "period_month": "period_month",
+          "metric_group": "metric_group",
+          "metric_item": "metric_item",
+          "metric_name": "metric_name",
+          "metric_value": "metric_value",
+          "compare_type": "compare_type",
+          "created_at": "created_at"
+        },
+        "room_fee_daily": {
+          "id": "id",
+          "import_batch_id": "import_batch_id",
+          "hotel_name": "hotel_name",
+          "business_date": "business_date",
+          "room_no": "room_no",
+          "room_type": "room_type",
+          "guest_name": "guest_name",
+          "customer_source": "customer_source",
+          "checkin_time": "checkin_time",
+          "checkout_time": "checkout_time",
+          "rack_rate": "rack_rate",
+          "price_type": "price_type",
+          "daily_price": "daily_price",
+          "stay_type": "stay_type",
+          "charge_subject": "charge_subject",
+          "room_nights": "room_nights",
+          "room_fee": "room_fee",
+          "operator_name": "operator_name",
+          "order_no": "order_no",
+          "created_at": "created_at"
+        },
+        "operating_snapshot": {
+          "hotel_name": "hotel_name",
+          "business_date": "business_date",
+          "occupancy_rate": "occupancy_rate",
+          "adr": "adr",
+          "revpar": "revpar",
+          "available_rooms": "available_rooms",
+          "sold_rooms": "sold_rooms",
+          "remaining_rooms": "remaining_rooms",
+          "orders_today": "orders_today",
+          "risk_flags": "risk_flags"
+        },
+        "price_data": {
+          "hotel_name": "hotel_name",
+          "business_date": "business_date",
+          "room_type_id": "room_type_id",
+          "channel": "channel",
+          "current_price": "current_price",
+          "price_floor": "price_floor",
+          "price_ceiling": "price_ceiling",
+          "normal_price": "normal_price",
+          "weekend_price": "weekend_price",
+          "begin_date": "begin_date",
+          "end_date": "end_date",
+          "competitor_price": "competitor_price"
+        },
+        "demand_context": {
+          "hotel_name": "hotel_name",
+          "business_date": "business_date",
+          "calendar_context": "calendar_context",
+          "weather_context": "weather_context",
+          "event_context": "event_context",
+          "competitor_context": "competitor_context",
+          "operating_context": "operating_context",
+          "progress_context": "progress_context",
+          "demand_signal": "demand_signal"
+        },
+        "operation_diagnosis": {
+          "hotel_name": "hotel_name",
+          "business_date": "business_date",
+          "hos_score": "hos_score",
+          "merchant_operation_score": "merchant_operation_score",
+          "peer_rank": "peer_rank",
+          "exposure": "exposure",
+          "views": "views",
+          "payment_conversion_rate": "payment_conversion_rate",
+          "rating_total": "rating_total",
+          "bad_review_rate": "bad_review_rate",
+          "ota_health_score": "ota_health_score"
+        },
+        "sales_baseline": {
+          "hotel_name": "hotel_name",
+          "business_date": "business_date",
+          "target_orders": "target_orders",
+          "hourly_curve": "hourly_curve",
+          "historical_same_weekday": "historical_same_weekday",
+          "historical_same_date_type": "historical_same_date_type",
+          "holiday_history": "holiday_history",
+          "completion_rate": "completion_rate"
+        },
+        "reservation_snapshot": {
+          "id": "id",
+          "hotel_name": "hotel_name",
+          "business_date": "arrive_date",
+          "arrival_time": "arrive_time",
+          "room_count": "room_count",
+          "room_type": "room_type",
+          "order_no": "order_id",
+          "status": "booking_status",
+          "created_at": "created_at"
+        },
+        "stayover_snapshot": {
+          "id": "id",
+          "hotel_name": "hotel_name",
+          "checkin_time": "checkin_time",
+          "room_no": "room_no",
+          "room_type": "room_type",
+          "order_no": "order_id",
+          "checkout_time": "curr_departure",
+          "original_checkout_time": "orig_departure",
+          "status": "status",
+          "created_at": "created_at"
+        }
+      },
+      "reservation_status_active_aliases": ["预订", "已预订", "confirmed", "booked", "reserved"],
+      "metric_aliases": {
+        "occupancy_rate": ["出租率", "入住率", "occupancy", "occupancy_rate"],
+        "adr": ["ADR", "平均房价", "平均每日房价", "adr"],
+        "revpar": ["RevPAR", "RevPar", "revpar", "每房收益", "平均可售房收益", "可售房收入", "每间可售房收入"],
+        "room_fee": ["房费", "房费金额", "营业收入", "room_fee"],
+        "room_nights": ["间夜", "过夜房", "room_nights"]
+      },
+      "status_aliases": {
+        "available_clean": ["空净", "可售", "空房", "available_clean"],
+        "available_dirty": ["空脏", "available_dirty"],
+        "occupied_clean": ["住净", "在住", "occupied_clean"],
+        "occupied_dirty": ["住脏", "occupied_dirty"],
+        "maintenance": ["维修", "停用", "维护", "maintenance"]
+      },
+      "privacy": {
+        "redact_fields": ["guest_name", "room_no", "order_no", "operator_name"],
+        "log_policy": "Only log profile, template, row counts, normalized fields, and redacted samples."
+      }
+    },
+    "report_mysql_test": {
+      "inherits": "report_mysql_prod",
+      "db_kind": "mysql",
+      "dsn_env": "HOTEL_OTA_DB_DSN_TEST"
+    }
+  },
+  "allowed_templates": [
+    "operating_snapshot",
+    "price_snapshot",
+    "order_snapshot",
+    "demand_context",
+    "operation_diagnosis",
+    "sales_baseline",
+    "daily_metrics",
+    "monthly_metrics",
+    "reservation_snapshot",
+    "stayover_snapshot"
+  ],
+  "security": {
+    "readonly_required": true,
+    "free_sql_allowed": false,
+    "never_log": ["dsn", "password", "token", "secret", "private_key", "host", "user"]
+  }
+}

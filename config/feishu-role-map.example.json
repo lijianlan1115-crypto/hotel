@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "default_policy": "deny_unknown",
+  "description": "Copy this file to /etc/hotel-ota-ai/feishu-role-map.json and replace IDs. Do not commit real Feishu user IDs or group IDs.",
+  "id_policy": {
+    "preferred_identity": "open_id",
+    "note": "Feishu values that start with ou_ should be configured as open_id/feishu_open_id and tested with --open-id."
+  },
+  "allowed_chat_ids": [
+    "oc_replace_with_project_group_id"
+  ],
+  "users": [
+    {
+      "name": "超级管理员",
+      "role": "admin",
+      "open_id": "ou_replace_with_admin_open_id",
+      "feishu_open_id": "ou_replace_with_admin_open_id",
+      "user_id": "",
+      "feishu_user_id": "",
+      "union_id": "",
+      "feishu_union_id": ""
+    },
+    {
+      "name": "老板",
+      "role": "owner",
+      "open_id": "ou_replace_with_owner_open_id",
+      "feishu_open_id": "ou_replace_with_owner_open_id",
+      "user_id": "",
+      "feishu_user_id": "",
+      "union_id": "",
+      "feishu_union_id": ""
+    },
+    {
+      "name": "运营",
+      "role": "operator",
+      "open_id": "ou_replace_with_operator_open_id",
+      "feishu_open_id": "ou_replace_with_operator_open_id",
+      "user_id": "",
+      "feishu_user_id": "",
+      "union_id": "",
+      "feishu_union_id": ""
+    },
+    {
+      "name": "前台",
+      "role": "frontdesk",
+      "open_id": "ou_replace_with_frontdesk_open_id",
+      "feishu_open_id": "ou_replace_with_frontdesk_open_id",
+      "user_id": "",
+      "feishu_user_id": "",
+      "union_id": "",
+      "feishu_union_id": ""
+    }
+  ]
+}

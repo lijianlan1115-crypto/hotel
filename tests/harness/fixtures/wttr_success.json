@@ -1,0 +1,11 @@
+{
+  "current_condition": [
+    {
+      "weatherDesc": [{ "value": "Light rain" }],
+      "temp_C": "8",
+      "precipMM": "1.2",
+      "humidity": "78",
+      "windspeedKmph": "9"
+    }
+  ]
+}

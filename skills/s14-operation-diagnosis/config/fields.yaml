@@ -1,0 +1,224 @@
+# S14 OpenClaw field contract.
+# This file is the single source of truth for input names, business fields,
+# module weights, and formula parameters used by runtime/calculator.py.
+
+skill_id: s14-operation-diagnosis
+skill_version: 1.0.0
+
+runtime_files:
+  entrypoint: runtime/__init__.py
+  models: runtime/models.py
+  calculator: runtime/calculator.py
+  data_fetcher: runtime/data_fetcher.py
+  input_schema: references/input_schema.json
+  output_schema: references/output_schema.json
+  report_template: ota_diagnosis_report_demo.html
+  trigger_config: config/triggers.yaml
+
+strict_execution_steps:
+  - id: S01_VALIDATE_INPUT
+    owner_file: runtime/models.py
+    rule: "Validate only control inputs. Reject metrics, business_fields, json_payload, manual_diagnosis_input, and upstream_skill_output."
+  - id: S02_FETCH_SOURCE
+    owner_file: runtime/data_fetcher.py
+    rule: "Read and aggregate facts from hotel_pricing business tables or uploaded Excel for hotel_id, platform, period_start, and period_end."
+  - id: S03_NORMALIZE_FIELDS
+    owner_file: runtime/__init__.py
+    rule: "Normalize defaults and field completeness. Do not invent missing business facts."
+  - id: S04_CALCULATE_MODULES
+    owner_file: runtime/calculator.py
+    rule: "Calculate M01-M08 in fixed order with formulas defined only in calculator.py."
+  - id: S05_APPLY_CAP_RULES
+    owner_file: runtime/calculator.py
+    rule: "Apply cap rules after raw module scores are calculated."
+  - id: S06_RENDER_REPORT
+    owner_file: runtime/__init__.py
+    rule: "Render HTML report from templates/ota_diagnosis_report_demo.template.html and return report_url."
+  - id: S07_VALIDATE_OUTPUT
+    owner_file: runtime/__init__.py
+    rule: "Validate fixed output format, M01-M08 coverage, 100 total weight, feishu_message, and report_url before returning."
+
+platforms:
+  fliggy: 飞猪
+  meituan: 美团
+  ctrip: 携程
+  qunar: 去哪儿
+  douyin: 抖音
+  multi: 多渠道
+
+required_inputs:
+  - hotel_id
+  - platform
+  - period_start
+  - period_end
+
+data_source_policy:
+  mode: controlled_source_only
+  description: "S14 is independent. OpenClaw passes only control inputs; facts must be read by runtime/data_fetcher.py from hotel_pricing business tables or an uploaded Excel file normalized by config/excel_field_mapping.yaml."
+  supported_sources:
+    - database
+    - excel_upload
+  forbidden_inputs:
+    - business_fields
+    - metrics
+    - upstream_skill_output
+    - s02_operating_snapshot_output
+    - s08_promotion_output
+    - s12_reputation_output
+  required_config:
+    - db_kind
+    - db_dsn
+  production_required_config:
+    - report_output_dir
+    - public_base_url
+  report_url_policy: "Skill writes HTML into report_output_dir/output_dir and returns public_base_url + file name. Skill must not start or open HTTP ports."
+  excel_mapping_file: config/excel_field_mapping.yaml
+  excel_mapping_table: references/excel_field_mapping.csv
+  database_source_file: config/hotel_pricing_sources.yaml
+  production_database: hotel_pricing
+  production_tables:
+    - jd01_bookings
+    - jd04_extensions
+    - fact_daily_metrics
+    - fact_monthly_metrics
+    - fact_room_fee_daily
+    - fact_room_status_snapshot
+
+optional_inputs:
+  - hotel_name
+  - image_quality_rating
+  - owner_user_id
+  - output_dir
+  - public_base_url
+
+field_mapping:
+  hotel_id: hotel_id
+  hotel_name: hotel_name
+  platform: platform
+  channel_source: channel_source
+  period_start: period_start
+  period_end: period_end
+  owner_user_id: owner_user_id
+  "酒店ID": hotel_id
+  "酒店名称": hotel_name
+  "诊断渠道": platform
+  "开始日期": period_start
+  "结束日期": period_end
+  "负责人": owner_user_id
+  "图片质量评级": image_quality_rating
+  "视频状态": video_status
+  "房型卖点状态": room_selling_point_status
+  "入口标签质量": entry_tag_quality
+
+business_fields:
+  revpar: number
+  adr: number
+  occupancy: ratio
+  room_revenue: number
+  sold_room_nights: number
+  available_room_nights: number
+  exposure: number
+  views: number
+  booking_conversion_rate: ratio
+  payment_conversion_rate: ratio
+  lost_orders: number
+  lost_amount: number
+  price_completeness: ratio
+  inventory_health_rate: ratio
+  promo_amount: number
+  promo_cost: number
+  promo_roi: number
+  image_quality_rating: enum
+  video_status: enum
+  room_selling_point_status: enum
+  entry_tag_quality: enum
+  rating_total: number
+  bad_review_rate: ratio
+  unreplied_reviews: number
+  field_completeness: ratio
+
+module_weights:
+  M01: 20
+  M02: 15
+  M03: 15
+  M04: 15
+  M05: 10
+  M06: 10
+  M07: 8
+  M08: 7
+
+formula_parameters:
+  M01:
+    revpar_target: 200
+    adr_target: 150
+    occupancy_target: 0.85
+    revpar_weight: 0.4
+    adr_weight: 0.3
+    occupancy_weight: 0.3
+  M02:
+    exposure_target: 10000
+    views_target: 1200
+    peer_rank_target: 0.3
+    exposure_weight: 0.45
+    views_weight: 0.35
+    peer_weight: 0.2
+  M03:
+    booking_conversion_target: 0.08
+    payment_conversion_target: 0.035
+    lost_order_target: 5
+    booking_weight: 0.4
+    payment_weight: 0.4
+    lost_weight: 0.2
+  M04:
+    price_completeness_weight: 0.35
+    inventory_health_weight: 0.35
+    room_type_health_weight: 0.3
+  M05:
+    roi_target: 5
+    promo_amount_target: 10000
+    cost_control_target: 0.18
+    roi_weight: 0.5
+    amount_weight: 0.3
+    cost_weight: 0.2
+  M06:
+    image_weight: 0.35
+    video_weight: 0.2
+    selling_point_weight: 0.25
+    entry_tag_weight: 0.2
+  M07:
+    rating_target: 4.8
+    bad_review_target: 0.03
+    unreplied_target: 0
+    rating_weight: 0.5
+    bad_review_weight: 0.25
+    reply_weight: 0.25
+  M08:
+    field_completeness_weight: 0.45
+    completed_actions_weight: 0.3
+    review_reason_weight: 0.25
+
+cap_rules:
+  - id: C01
+    condition: available_room_nights_missing
+    max_score: 85
+    message: "可售间夜缺失，无法完整校验收益口径"
+  - id: C03
+    condition: conversion_module_below_60
+    max_score: 78
+    message: "转化下单模块低于60%，需优先核查浏览-支付转化"
+  - id: C04
+    condition: price_inventory_unhealthy
+    max_score: 80
+    message: "核心房型价格或库存不健康"
+  - id: C05
+    condition: promo_cost_without_detail
+    max_score: 88
+    message: "有推广花费但缺曝光/点击/CPC/成交明细"
+  - id: C06
+    condition: page_manual_missing
+    max_score: 90
+    message: "图片/标签/房型描述等人工项未提供"
+  - id: C07
+    condition: field_completeness_below_70
+    max_score: 70
+    message: "关键经营字段缺失超过30%"

@@ -1,0 +1,61 @@
+{
+  "channels": {
+    "feishu": {
+      "enabled": true,
+      "domain": "feishu",
+      "connectionMode": "websocket",
+      "groupPolicy": "allowlist",
+      "groupAllowFrom": ["oc_replace_with_project_group_id"],
+      "requireMention": true,
+      "streaming": true,
+      "textChunkLimit": 2000,
+      "mediaMaxMb": 30
+    }
+  },
+  "agents": {
+    "defaults": {
+      "workspace": "/opt/openclaw/workspaces/s14-feishu-test",
+      "repoRoot": "/opt/openclaw/workspaces/s14-feishu-test",
+      "userTimezone": "Asia/Shanghai",
+      "contextInjection": "always",
+      "bootstrapMaxChars": 50000,
+      "bootstrapTotalMaxChars": 180000,
+      "skills": [
+        "s14-operation-diagnosis"
+      ]
+    },
+    "list": [
+      {
+        "id": "s14-feishu-test",
+        "workspace": "/opt/openclaw/workspaces/s14-feishu-test",
+        "repoRoot": "/opt/openclaw/workspaces/s14-feishu-test",
+        "contextInjection": "always",
+        "bootstrapMaxChars": 60000,
+        "bootstrapTotalMaxChars": 220000,
+        "skills": [
+          "s14-operation-diagnosis"
+        ]
+      }
+    ]
+  },
+  "skills": {
+    "limits": {
+      "maxSkillsPromptChars": 32000
+    },
+    "entries": {
+      "s14-operation-diagnosis": { "enabled": true }
+    }
+  },
+  "cron": {
+    "enabled": true,
+    "store": "~/.openclaw/cron/jobs.json",
+    "maxConcurrentRuns": 1,
+    "retry": {
+      "maxAttempts": 3,
+      "backoffMs": [60000, 120000, 300000],
+      "retryOn": ["rate_limit", "overloaded", "network", "server_error"]
+    },
+    "sessionRetention": "24h",
+    "runLog": { "maxBytes": "2mb", "keepLines": 2000 }
+  }
+}

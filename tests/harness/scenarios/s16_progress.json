@@ -1,0 +1,23 @@
+[
+  {
+    "id": "s16-progress-init-db",
+    "command": ["python", "runtime/hotel_ota_runtime.py", "--db", "${DB}", "init-db"],
+    "expect": { "status": "ok" }
+  },
+  {
+    "id": "s16-progress-sample-blocks-downstream",
+    "command": ["python", "runtime/hotel_ota_runtime.py", "--db", "${DB}", "deviation", "--hotel-id", "puyue"],
+    "env": {
+      "HOTEL_OTA_DB_SOURCE_ENABLE": "0"
+    },
+    "expect": {
+      "status": "data_gap",
+      "json_path": {
+        "downstream_allowed": false,
+        "downstream_blocked_reason": "actual_orders_not_today_realtime",
+        "pricing_candidate_allowed": false
+      },
+      "contains_text": ["progress_checkpoint", "checkpoint_target_orders", "traffic_problem", "conversion_problem"]
+    }
+  }
+]

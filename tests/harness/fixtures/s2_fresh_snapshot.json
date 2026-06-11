@@ -1,0 +1,10 @@
+{
+  "status": "ok",
+  "freshness_status": "fresh",
+  "business_status": "current",
+  "data_business_date": "2026-02-17",
+  "data_snapshot_time": "2026-02-17 13:30:00",
+  "occupancy_rate": 0.86,
+  "adr": 168,
+  "revpar": 144.48
+}

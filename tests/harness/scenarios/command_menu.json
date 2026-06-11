@@ -1,0 +1,85 @@
+[
+  {
+    "id": "command-menu-init-db",
+    "command": ["python", "runtime/hotel_ota_runtime.py", "--db", "${DB}", "init-db"],
+    "expect": { "status": "ok" }
+  },
+  {
+    "id": "command-menu-seed-demo",
+    "command": ["python", "runtime/hotel_ota_runtime.py", "--db", "${DB}", "seed-demo"],
+    "expect": { "status": "ok" }
+  },
+  {
+    "id": "command-menu-operator-start",
+    "command": ["python", "runtime/hotel_ota_runtime.py", "--db", "${DB}", "command-menu-start", "--source", "manual_test", "--user-role", "operator", "--open-id", "ou_operator", "--chat-id", "oc_menu", "--hotel-id", "puyue", "--message", "菜单"],
+    "expect": {
+      "status": "ok",
+      "json_path": {
+        "starter_role": "operator",
+        "execution_status": "waiting_for_reply"
+      },
+      "contains_text": ["经营快报", "调价 dry-run"]
+    }
+  },
+  {
+    "id": "command-menu-operator-reply-snapshot",
+    "command": ["python", "runtime/hotel_ota_runtime.py", "--db", "${DB}", "command-menu-reply", "--source", "manual_test", "--user-role", "operator", "--open-id", "ou_operator", "--chat-id", "oc_menu", "--hotel-id", "puyue", "--reply", "1"],
+    "expect": {
+      "status": "ok",
+      "json_path": {
+        "selected_command.id": "1",
+        "execution_status": "executed"
+      },
+      "contains_text": ["final_reply"]
+    }
+  },
+  {
+    "id": "command-menu-start-for-missing-params",
+    "command": ["python", "runtime/hotel_ota_runtime.py", "--db", "${DB}", "command-menu-start", "--source", "manual_test", "--user-role", "operator", "--open-id", "ou_operator", "--chat-id", "oc_menu", "--hotel-id", "puyue", "--message", "菜单"],
+    "expect": { "status": "ok" }
+  },
+  {
+    "id": "command-menu-price-missing-params",
+    "command": ["python", "runtime/hotel_ota_runtime.py", "--db", "${DB}", "command-menu-reply", "--source", "manual_test", "--user-role", "operator", "--open-id", "ou_operator", "--chat-id", "oc_menu", "--hotel-id", "puyue", "--reply", "8"],
+    "expect": {
+      "status": "awaiting_params",
+      "json_path": {
+        "blocked_reason": "missing_required_params",
+        "selected_command.id": "8"
+      }
+    }
+  },
+  {
+    "id": "command-menu-start-for-owner-mismatch",
+    "command": ["python", "runtime/hotel_ota_runtime.py", "--db", "${DB}", "command-menu-start", "--source", "manual_test", "--user-role", "operator", "--open-id", "ou_owner", "--chat-id", "oc_takeover", "--hotel-id", "puyue", "--message", "菜单"],
+    "expect": { "status": "ok" }
+  },
+  {
+    "id": "command-menu-other-user-blocked",
+    "command": ["python", "runtime/hotel_ota_runtime.py", "--db", "${DB}", "command-menu-reply", "--source", "manual_test", "--user-role", "operator", "--open-id", "ou_other", "--chat-id", "oc_takeover", "--hotel-id", "puyue", "--reply", "1"],
+    "expect": {
+      "status": "blocked",
+      "json_path": {
+        "blocked_reason": "menu_owner_mismatch"
+      }
+    }
+  },
+  {
+    "id": "command-menu-start-for-price-dry-run",
+    "command": ["python", "runtime/hotel_ota_runtime.py", "--db", "${DB}", "command-menu-start", "--source", "manual_test", "--user-role", "operator", "--open-id", "ou_price", "--chat-id", "oc_price", "--hotel-id", "puyue", "--message", "菜单"],
+    "expect": { "status": "ok" }
+  },
+  {
+    "id": "command-menu-price-dry-run",
+    "command": ["python", "runtime/hotel_ota_runtime.py", "--db", "${DB}", "command-menu-reply", "--source", "manual_test", "--user-role", "operator", "--open-id", "ou_price", "--chat-id", "oc_price", "--hotel-id", "puyue", "--reply", "8 KING Mtop 200 2026-06-08 2026-06-08 0.9,0.95 188"],
+    "expect": {
+      "status": "ok",
+      "json_path": {
+        "selected_command.id": "8",
+        "result_summary.price_model.ota_estimated_final_price": 171.0,
+        "result_summary.live_call": false
+      },
+      "forbid_text": ["git stash", "ChannelKey", "AppKey"]
+    }
+  }
+]

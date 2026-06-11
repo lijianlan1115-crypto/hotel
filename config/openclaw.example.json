@@ -1,0 +1,112 @@
+{
+  "channels": {
+    "feishu": {
+      "enabled": true,
+      "domain": "feishu",
+      "connectionMode": "websocket",
+      "groupPolicy": "allowlist",
+      "groupAllowFrom": ["oc_replace_with_project_group_id"],
+      "requireMention": true,
+      "streaming": true,
+      "textChunkLimit": 2000,
+      "mediaMaxMb": 30
+    }
+  },
+  "agents": {
+    "defaults": {
+      "workspace": "/opt/openclaw/workspaces/hotel-ota-ai",
+      "repoRoot": "/opt/openclaw/workspaces/hotel-ota-ai",
+      "userTimezone": "Asia/Shanghai",
+      "contextInjection": "always",
+      "bootstrapMaxChars": 50000,
+      "bootstrapTotalMaxChars": 180000,
+      "skills": [
+        "s01-control-config",
+        "s02-operating-snapshot",
+        "s03-message-hub",
+        "s04-market-context",
+        "s05-revenue-decision",
+        "s06-price-sync-execution",
+        "s07-competitive-monitoring",
+        "s08-promotion-planning",
+        "s09-traffic-peak-valley",
+        "s10-roi-decision",
+        "s11-promotion-execution",
+        "s12-reputation-management",
+        "s13-review-reply",
+        "s14-operation-diagnosis",
+        "s15-sales-baseline",
+        "s16-progress-deviation",
+        "s17-customer-order-analysis"
+      ]
+    },
+    "list": [
+      {
+        "id": "hotel-ota-chief",
+        "workspace": "/opt/openclaw/workspaces/hotel-ota-ai",
+        "repoRoot": "/opt/openclaw/workspaces/hotel-ota-ai",
+        "contextInjection": "always",
+        "bootstrapMaxChars": 60000,
+        "bootstrapTotalMaxChars": 220000,
+        "skillsLimits": {
+          "maxSkillsPromptChars": 32000
+        },
+        "skills": [
+          "s01-control-config",
+          "s02-operating-snapshot",
+          "s03-message-hub",
+          "s04-market-context",
+          "s05-revenue-decision",
+          "s06-price-sync-execution",
+          "s07-competitive-monitoring",
+          "s08-promotion-planning",
+          "s09-traffic-peak-valley",
+          "s10-roi-decision",
+          "s11-promotion-execution",
+          "s12-reputation-management",
+          "s13-review-reply",
+          "s14-operation-diagnosis",
+          "s15-sales-baseline",
+          "s16-progress-deviation",
+          "s17-customer-order-analysis"
+        ]
+      }
+    ]
+  },
+  "skills": {
+    "limits": {
+      "maxSkillsPromptChars": 32000
+    },
+    "entries": {
+      "s01-control-config": { "enabled": true },
+      "s02-operating-snapshot": { "enabled": true },
+      "s03-message-hub": { "enabled": true },
+      "s04-market-context": { "enabled": true },
+      "s05-revenue-decision": { "enabled": true },
+      "s06-price-sync-execution": { "enabled": true },
+      "s07-competitive-monitoring": { "enabled": true },
+      "s08-promotion-planning": { "enabled": true },
+      "s09-traffic-peak-valley": { "enabled": true },
+      "s10-roi-decision": { "enabled": true },
+      "s11-promotion-execution": { "enabled": true },
+      "s12-reputation-management": { "enabled": true },
+      "s13-review-reply": { "enabled": true },
+      "s14-operation-diagnosis": { "enabled": true },
+      "s15-sales-baseline": { "enabled": true },
+      "s16-progress-deviation": { "enabled": true },
+      "s17-customer-order-analysis": { "enabled": true }
+    }
+  },
+  "cron": {
+    "enabled": true,
+    "store": "~/.openclaw/cron/jobs.json",
+    "maxConcurrentRuns": 1,
+    "retry": {
+      "maxAttempts": 3,
+      "backoffMs": [60000, 120000, 300000],
+      "retryOn": ["rate_limit", "overloaded", "network", "server_error"]
+    },
+    "sessionRetention": "24h",
+    "runLog": { "maxBytes": "2mb", "keepLines": 2000 }
+  }
+}

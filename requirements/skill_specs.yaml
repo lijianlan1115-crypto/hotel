@@ -1,0 +1,209 @@
+project:
+  name: hotel-ota-ai-digital-employee
+  workspace: /opt/openclaw/workspaces/hotel-ota-ai
+  chief_agent: hotel-ota-chief
+  channel: feishu
+  default_hotel_id: puyue
+  language_policy:
+    business_instruction: zh-CN
+    technical_identifiers: en-US
+    keep_english_fields:
+      - skill name
+      - command
+      - api method
+      - environment variable
+      - json key
+  milestones:
+    p0_p1_deadline: "2026-06-15"
+    p0_p1_required_skills: ["S1", "S2", "S3", "S14", "S15", "S16", "S4", "S5", "S6"]
+    p0_p1_required_control:
+      - OpenClaw workspace
+      - Feishu channel
+      - skill allowlist
+      - cron jobs
+      - approval policy
+      - Feishu role map
+      - unified channel adapter
+      - channel dry-run reference
+      - Meituan reference fields
+      - Dingdanll reference fields
+      - runtime deterministic input/output boundary
+    p2_deadline: "2026-06-30"
+  data_contract:
+    adapter_vendor: ["beyondh", "meituan", "dindanll", "xhotel", "manual", "database"]
+    channel_source: ["meituan", "feizhu", "douyin", "ctrip", "wechat", "pms", "manual"]
+    data_source_type: ["meituan_api", "beyondh_api", "dindanll_api", "sqlite_db", "mysql_db", "postgres_db", "rpa", "manual_upload", "sample_data"]
+    source_capability: ["read_only", "write_dry_run", "write_live_pending", "unavailable"]
+    field_quality: ["confirmed", "inferred", "manual_required", "unavailable"]
+    user_role: ["admin", "owner", "operator", "frontdesk", "guest"]
+    auth_context:
+      source: ["feishu", "cli", "cron", "manual_test"]
+      auth_status: ["authorized", "unauthorized", "missing_identity"]
+      permissions:
+        - view_diagnosis
+        - run_recommendation
+        - create_dry_run
+        - create_approval
+        - approve_live_action
+        - execute_live_action
+        - manage_roles
+        - manage_safety_config
+  output_contract:
+    - status
+    - skill_id
+    - summary
+    - evidence
+    - recommendations
+    - actions
+    - risk_level
+    - approval_required
+    - next_run_at
+    - artifacts
+  source_governance:
+    highest_priority:
+      - latest_user_instruction
+      - approval_dry_run_live_log_redaction
+    project_goal_sources:
+      - 最后一次会议讨论.md
+      - 项目进展与说明.md
+      - 信息清单.md
+    business_algorithm_sources:
+      - 功能逻辑蓝图/功能逻辑蓝图/01-09*.md
+      - 功能逻辑蓝图/功能逻辑蓝图/10-数据字段映射与校验记录.md
+    architecture_source:
+      - 整体架构分析(1).xlsx
+    conflict_policy:
+      business_conflict: needs_business_confirm
+      uncertain_threshold: configurable
+      api_conflict: map_to_unified_contract
+      safety_conflict: stricter_rule_wins
+  reference_files_required:
+    - references/input_schema.json
+    - references/output_schema.json
+    - references/rules.md
+    - references/examples.md
+    - references/runtime_commands.md
+  generation_rules:
+    - Do not write source_governance, blueprint_sources, or source document names into skill rules.md.
+    - Do not expose blueprint_sources as a runtime or skill input_schema field.
+    - Keep source tracking in requirements only; skill files should contain executable business rules.
+skills:
+  - id: S1
+    name: s01-control-config
+    phase: P0
+    triggers: ["初始化配置", "查看酒店配置", "设置价格底线", "skill开关", "权限配置"]
+    depends_on: []
+    runtime: ["init-db", "seed-demo"]
+    output: ["config_status", "missing_config", "approval_policy"]
+  - id: S2
+    name: s02-operating-snapshot
+    phase: P0
+    triggers: ["今天经营情况", "实时房态", "出租率", "ADR", "RevPAR"]
+    depends_on: ["S1"]
+    runtime: ["snapshot", "normalize-sample meituan-room-count", "normalize-sample dindanll-inventory", "database-inspect mysql", "database-query operating_snapshot"]
+    output: ["metrics", "risk_flags", "data_freshness", "adapter_vendor", "data_source_type", "field_quality"]
+  - id: S3
+    name: s03-message-hub
+    phase: P0
+    triggers: ["发送通知", "生成飞书消息", "审批卡片", "日报"]
+    depends_on: ["S1"]
+    runtime: []
+    output: ["message_body", "target_role", "priority"]
+  - id: S4
+    name: s04-market-context
+    phase: P1
+    triggers: ["节假日", "周边活动", "行情", "市场热度"]
+    depends_on: ["S1"]
+    runtime: ["demand-index"]
+    output: ["demand_index", "market_score", "evidence", "pricing_effect"]
+  - id: S5
+    name: s05-revenue-decision
+    phase: P1
+    triggers: ["需要调价吗", "涨价", "降价", "收益建议", "定价策略"]
+    depends_on: ["S1", "S2", "S4", "S15", "S16"]
+    runtime: ["revenue-decision", "normalize-sample meituan-price", "normalize-sample dindanll-price", "database-query operating_snapshot", "database-query price_snapshot"]
+    output: ["recommendation", "demand_index", "ota_health_score", "safety_checks", "approval_required"]
+  - id: S6
+    name: s06-price-sync-execution
+    phase: P1
+    triggers: ["执行调价", "同步房价", "确认执行", "调价dry-run"]
+    depends_on: ["S1", "S3", "S5"]
+    runtime: ["execute-price", "beyondh-call", "adapter-request", "database-query price_snapshot"]
+    output: ["dry_run_result", "adapter_vendor", "channel_source", "api_result", "fallback_task"]
+  - id: S7
+    name: s07-competitive-monitoring
+    phase: P2
+    triggers: ["竞品", "竞争圈", "对手价格", "竞态"]
+    depends_on: ["S1", "S2"]
+    runtime: ["competition-alert", "normalize-sample meituan-price", "normalize-sample meituan-room-count"]
+    output: ["competitor_table", "status", "confidence"]
+  - id: S8
+    name: s08-promotion-planning
+    phase: P2
+    triggers: ["推广计划", "开推广", "广告预算", "活动建议"]
+    depends_on: ["S2", "S7", "S9", "S10"]
+    runtime: ["promotion-plan"]
+    output: ["promotion_plan", "budget_range", "approval_required"]
+  - id: S9
+    name: s09-traffic-peak-valley
+    phase: P2
+    triggers: ["流量高峰", "流量低谷", "几点推广", "进单时段"]
+    depends_on: ["S2", "S15"]
+    runtime: ["demand-index", "conversion-diagnosis"]
+    output: ["demand_index", "traffic_state", "time_windows", "recommended_actions"]
+  - id: S10
+    name: s10-roi-decision
+    phase: P2
+    triggers: ["ROI", "投产比", "推广值不值", "广告效果"]
+    depends_on: ["S2", "S8"]
+    runtime: ["promotion-roi"]
+    output: ["roi_summary", "decision", "data_gaps"]
+  - id: S11
+    name: s11-promotion-execution
+    phase: P2
+    triggers: ["执行推广", "调整出价", "关闭广告", "打开广告"]
+    depends_on: ["S3", "S8", "S10"]
+    runtime: ["promotion-execute"]
+    output: ["execution_task", "approval_id", "verification"]
+  - id: S12
+    name: s12-reputation-management
+    phase: P2
+    triggers: ["口碑", "评分", "差评", "回复率", "好评任务"]
+    depends_on: ["S2"]
+    runtime: ["reputation-diagnosis"]
+    output: ["scorecard", "risk_items", "tasks"]
+  - id: S13
+    name: s13-review-reply
+    phase: P2
+    triggers: ["回复评论", "差评话术", "好评回复", "评论草稿"]
+    depends_on: ["S12"]
+    runtime: ["reputation-diagnosis"]
+    output: ["reply_draft", "sentiment", "approval_required"]
+  - id: S14
+    name: s14-operation-diagnosis
+    phase: P0
+    triggers: ["运营诊断", "OTA诊断", "内容优化", "周诊断"]
+    depends_on: ["S1", "S2"]
+    runtime: ["ota-health", "conversion-diagnosis", "database-query operating_snapshot", "database-query daily_metrics"]
+    output: ["scorecard", "ab_tasks", "owners"]
+  - id: S15
+    name: s15-sales-baseline
+    phase: P0
+    triggers: ["销售基准线", "今日目标", "小时目标", "日报基准"]
+    depends_on: ["S1", "S4"]
+    runtime: ["baseline", "database-query daily_metrics", "database-query monthly_metrics"]
+    output: ["daily_target", "hourly_curve", "assumptions"]
+  - id: S16
+    name: s16-progress-deviation
+    phase: P0
+    triggers: ["进度偏差", "当前进度", "落后原因", "完成率"]
+    depends_on: ["S2", "S15"]
+    runtime: ["deviation", "database-query daily_metrics", "database-query monthly_metrics"]
+    output: ["progress_status", "cause", "downstream_skill"]
+  - id: S17
+    name: s17-customer-order-analysis
+    phase: P2
+    triggers: ["订单分析", "客户分级", "复购", "流失预警", "客户画像"]
+    depends_on: ["S1", "S2"]
+    runtime: ["beyondh-call Order.QueryOrders", "normalize-sample dindanll-order", "database-query order_snapshot"]
+    output: ["segments", "insights", "actions"]

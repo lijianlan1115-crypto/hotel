@@ -1,0 +1,41 @@
+[
+  {
+    "id": "s4-calendar-init-db",
+    "command": ["python", "runtime/hotel_ota_runtime.py", "--db", "${DB}", "init-db"],
+    "expect": { "status": "ok" }
+  },
+  {
+    "id": "s4-calendar-sync-2026",
+    "command": ["python", "runtime/hotel_ota_runtime.py", "--db", "${DB}", "calendar-sync", "--year", "2026", "--seed-file", "${ROOT}/tests/harness/fixtures/holiday_2026.json"],
+    "expect": {
+      "status": "ok",
+      "json_path": { "year": 2026, "rows": 365 }
+    }
+  },
+  {
+    "id": "s4-calendar-adjusted-workday",
+    "command": ["python", "runtime/hotel_ota_runtime.py", "--db", "${DB}", "calendar-query", "--date", "2026-02-14"],
+    "expect": {
+      "status": "ok",
+      "json_path": {
+        "is_weekend": true,
+        "is_adjusted_workday": true,
+        "is_workday": true,
+        "is_off_day": false
+      },
+      "forbid_text": ["适合涨价", "正式审批"]
+    }
+  },
+  {
+    "id": "s4-calendar-spring-festival",
+    "command": ["python", "runtime/hotel_ota_runtime.py", "--db", "${DB}", "calendar-query", "--date", "2026-02-17"],
+    "expect": {
+      "status": "ok",
+      "json_path": {
+        "is_holiday": true,
+        "holiday_group": "春节",
+        "demand_level": "high_candidate"
+      }
+    }
+  }
+]

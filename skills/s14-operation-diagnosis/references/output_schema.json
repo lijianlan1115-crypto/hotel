@@ -1,0 +1,303 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "S14 OpenClaw 独立诊断输出",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "status",
+    "skill_id",
+    "run_id",
+    "hotel_id",
+    "platform",
+    "channel_mode",
+    "raw_score",
+    "final_score",
+    "risk_level",
+    "field_completeness",
+    "module_scores",
+    "caps",
+    "missing_fields",
+    "formula_source",
+    "data_source",
+    "execution_steps",
+    "calculated_fields",
+    "mapped_fields",
+    "field_contract_file",
+    "field_mapping_source",
+    "feishu_message",
+    "approval_required",
+    "dry_run",
+    "report_file_path",
+    "report_url"
+  ],
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": [
+        "ok",
+        "partial",
+        "failed"
+      ]
+    },
+    "skill_id": {
+      "type": "string",
+      "const": "s14-operation-diagnosis"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "hotel_id": {
+      "type": "string"
+    },
+    "hotel_name": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "platform": {
+      "type": "string",
+      "enum": [
+        "fliggy",
+        "meituan",
+        "ctrip",
+        "qunar",
+        "douyin",
+        "multi"
+      ]
+    },
+    "channel_source": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "channel_mode": {
+      "type": "string",
+      "enum": [
+        "single",
+        "multi"
+      ]
+    },
+    "period_start": {
+      "type": "string",
+      "format": "date"
+    },
+    "period_end": {
+      "type": "string",
+      "format": "date"
+    },
+    "raw_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "final_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "risk_level": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "field_completeness": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "module_scores": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "module_id",
+          "name",
+          "score",
+          "weight",
+          "confidence",
+          "reasons"
+        ],
+        "properties": {
+          "module_id": {
+            "type": "string",
+            "enum": [
+              "M01",
+              "M02",
+              "M03",
+              "M04",
+              "M05",
+              "M06",
+              "M07",
+              "M08"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number",
+            "minimum": 0
+          },
+          "weight": {
+            "type": "number",
+            "minimum": 0
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "caps": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "missing_fields": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "formula_source": {
+      "type": "string",
+      "const": "runtime/calculator.py"
+    },
+    "data_source": {
+      "type": "string",
+      "enum": [
+        "hotel_pricing_tables",
+        "s14_operating_metrics",
+        "excel_upload"
+      ]
+    },
+    "execution_steps": {
+      "type": "array",
+      "minItems": 7,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "step",
+          "status",
+          "detail"
+        ],
+        "properties": {
+          "step": {
+            "type": "string",
+            "enum": [
+              "S01_VALIDATE_INPUT",
+              "S02_FETCH_SOURCE",
+              "S03_NORMALIZE_FIELDS",
+              "S04_CALCULATE_MODULES",
+              "S05_APPLY_CAP_RULES",
+              "S06_RENDER_REPORT",
+              "S07_VALIDATE_OUTPUT"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "partial",
+              "failed"
+            ]
+          },
+          "detail": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "calculated_fields": {
+      "type": "array",
+      "minItems": 25,
+      "items": {
+        "type": "string"
+      },
+      "description": "Fields that must be fetched, normalized, calculated, shown, or marked missing by the strict S14 process."
+    },
+    "mapped_fields": {
+      "type": "array",
+      "minItems": 25,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "field",
+          "role",
+          "source",
+          "formula_module"
+        ],
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "control",
+              "time",
+              "formula",
+              "evidence",
+              "cap_rule"
+            ]
+          },
+          "source": {
+            "type": "string"
+          },
+          "formula_module": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Trace table proving which normalized fields are allowed and where each field is used."
+    },
+    "field_contract_file": {
+      "type": "string",
+      "const": "references/excel_field_mapping.xlsx"
+    },
+    "field_mapping_source": {
+      "type": "string",
+      "const": "config/excel_field_mapping.yaml"
+    },
+    "feishu_message": {
+      "type": "string",
+      "description": "Strict Feishu reply text generated by the Skill. Bot should send this directly instead of formatting its own score summary."
+    },
+    "approval_required": {
+      "type": "boolean",
+      "const": true
+    },
+    "dry_run": {
+      "type": "boolean",
+      "const": true
+    },
+    "report_file_path": {
+      "type": "string"
+    },
+    "report_url": {
+      "type": "string"
+    }
+  }
+}

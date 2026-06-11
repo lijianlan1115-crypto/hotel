@@ -1,0 +1,89 @@
+{
+  "status": "partial",
+  "skill_id": "s14-operation-diagnosis",
+  "mode": "local_table_mode",
+  "data_source": "local_table_mode",
+  "formula_source": "酒店OTA全面诊断系统_开发交付总文档_v2_精简版.xlsx + scripts/s14_local_report.py",
+  "rules_sheets": [
+    "02_模块权重",
+    "03_主评分规则",
+    "04_校准与效果校验",
+    "05_历史纵向分析",
+    "07_报告展示案例",
+    "08_前端组件说明"
+  ],
+  "raw_score": 63.82,
+  "final_score": 63.82,
+  "field_completeness": 0.3636,
+  "module_scores": [
+    {
+      "module_id": "M01",
+      "name": "经营结果与收益锚点",
+      "weight": 20.0,
+      "score": 14.35,
+      "confidence": "low"
+    },
+    {
+      "module_id": "M02",
+      "name": "流量曝光与竞争圈",
+      "weight": 15.0,
+      "score": 10.45,
+      "confidence": "low"
+    },
+    {
+      "module_id": "M03",
+      "name": "转化下单与路径断点",
+      "weight": 15.0,
+      "score": 6.95,
+      "confidence": "low"
+    },
+    {
+      "module_id": "M04",
+      "name": "价格收益与房态库存",
+      "weight": 15.0,
+      "score": 9.05,
+      "confidence": "low"
+    },
+    {
+      "module_id": "M05",
+      "name": "推广效率与ROI",
+      "weight": 10.0,
+      "score": 7.25,
+      "confidence": "low"
+    },
+    {
+      "module_id": "M06",
+      "name": "页面展示与入口基础",
+      "weight": 10.0,
+      "score": 4.5,
+      "confidence": "low"
+    },
+    {
+      "module_id": "M07",
+      "name": "口碑信任与服务响应",
+      "weight": 8.0,
+      "score": 6.8,
+      "confidence": "low"
+    },
+    {
+      "module_id": "M08",
+      "name": "执行复盘与数据完整度",
+      "weight": 7.0,
+      "score": 4.48,
+      "confidence": "low"
+    }
+  ],
+  "triggered_caps": [
+    "数据可信度封顶：关键经营字段缺失超过30%，总分最高不得超过70。",
+    "转化封顶：转化下单模块低于60%，需优先核查浏览-支付转化。"
+  ],
+  "report_file_path": "/Users/jelly/Desktop/work/酒店数字员工/ota_diagnosis_report_demo.html",
+  "report_url": "http://47.108.200.194:8088/s14-reports/ota_diagnosis_report_demo.html",
+  "feishu_message": "【S14 酒店 OTA 诊断报告已生成】\n\n酒店：贵阳璞悦·奢电竞酒店\n周期：2026-06-01 至 2026-06-10\n综合得分：64 / 100\n风险等级：中风险\n\n报告链接：\nhttp://47.108.200.194:8088/s14-reports/ota_diagnosis_report_demo.html\n\n说明：当前为 S14 测试机器人返回结果，不影响正式酒店 OTA Agent。",
+  "inputs": {
+    "rules_workbook": "/Users/jelly/Desktop/work/酒店数字员工/酒店OTA全面诊断系统_开发交付总文档_v2_精简版.xlsx",
+    "pms_dir": "/Users/jelly/Downloads/2026.6.9测试数据",
+    "ota_workbook": "/Users/jelly/Desktop/work/酒店数字员工/飞猪OTA已获取数据整理表.xlsx",
+    "manual_form": "/Users/jelly/Desktop/work/酒店数字员工/openclaw-s14-operation-diagnosis-skill/inputs/s14_manual_form_mock.csv"
+  }
+}

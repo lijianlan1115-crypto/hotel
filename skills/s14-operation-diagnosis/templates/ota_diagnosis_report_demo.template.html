@@ -1,0 +1,1008 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>酒店 OTA 全面诊断报告</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --ink: #1d2430;
+      --muted: #667085;
+      --line: #d9dee8;
+      --line-soft: #edf0f5;
+      --blue: #2563eb;
+      --cyan: #0891b2;
+      --green: #168a4a;
+      --amber: #b7791f;
+      --red: #c2413a;
+      --purple: #6d5bd0;
+      --shadow: 0 8px 24px rgba(22, 34, 51, .08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+      font-size: 14px;
+      line-height: 1.45;
+      letter-spacing: 0;
+    }
+
+    .app-header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(255, 255, 255, .96);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(10px);
+    }
+
+    .header-inner {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 14px 24px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .title-block h1 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .title-block p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .btn {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--ink);
+      border-radius: 8px;
+      min-height: 36px;
+      padding: 0 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn.primary {
+      background: var(--ink);
+      border-color: var(--ink);
+      color: #fff;
+    }
+
+    .layout {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 20px 24px 48px;
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      gap: 20px;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 84px;
+      align-self: start;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .sidebar a {
+      display: block;
+      padding: 11px 14px;
+      color: #344054;
+      text-decoration: none;
+      border-bottom: 1px solid var(--line-soft);
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    .sidebar a:last-child { border-bottom: 0; }
+    .sidebar a:hover { background: #f2f6fb; color: var(--blue); }
+
+    main {
+      display: grid;
+      gap: 18px;
+    }
+
+    section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .section-head {
+      padding: 16px 18px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid var(--line-soft);
+    }
+
+    .section-head h2 {
+      margin: 0;
+      font-size: 17px;
+      line-height: 1.2;
+    }
+
+    .section-head p {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .section-body { padding: 18px; }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 24px;
+      padding: 0 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .status.good { color: var(--green); background: #e8f5ee; }
+    .status.warn { color: var(--amber); background: #fff4dc; }
+    .status.bad { color: var(--red); background: #fdebea; }
+    .status.info { color: var(--blue); background: #eaf1ff; }
+    .status.neutral { color: #475467; background: #eef1f5; }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .kpi {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      min-height: 116px;
+      display: grid;
+      align-content: space-between;
+      background: #fff;
+    }
+
+    .kpi label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .kpi strong {
+      display: block;
+      margin-top: 8px;
+      font-size: 28px;
+      line-height: 1;
+    }
+
+    .kpi span {
+      margin-top: 9px;
+      color: #475467;
+      font-size: 13px;
+    }
+
+    .cap-alert {
+      margin-top: 12px;
+      border: 1px solid #f0cd7a;
+      background: #fff8e6;
+      border-radius: 8px;
+      padding: 12px 14px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .cap-alert b { color: #7a4d08; }
+
+    .cap-rule {
+      margin-top: 10px;
+      border: 1px solid #f0cd7a;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fffdf7;
+    }
+
+    .cap-rule summary {
+      cursor: pointer;
+      padding: 10px 12px;
+      font-weight: 800;
+      color: #7a4d08;
+    }
+
+    .cap-rule div {
+      padding: 0 12px 12px;
+      color: #475467;
+      font-size: 13px;
+    }
+
+    .score-table,
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 10px 10px;
+      border-bottom: 1px solid var(--line-soft);
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    th {
+      color: #475467;
+      font-size: 12px;
+      font-weight: 700;
+      background: #f8fafc;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    .score-bar {
+      display: grid;
+      grid-template-columns: 90px 1fr 48px;
+      gap: 10px;
+      align-items: center;
+      min-width: 260px;
+    }
+
+    .bar-track {
+      height: 9px;
+      background: #e9edf3;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: var(--blue);
+    }
+
+    .bar-fill.good { background: var(--green); }
+    .bar-fill.warn { background: var(--amber); }
+    .bar-fill.bad { background: var(--red); }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 16px;
+    }
+
+    .subpanel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .subpanel h3 {
+      margin: 0;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line-soft);
+      font-size: 15px;
+      background: #fafbfc;
+    }
+
+    .subpanel-content { padding: 14px; }
+
+    .trend-wrap {
+      min-height: 280px;
+    }
+
+    svg { max-width: 100%; height: auto; display: block; }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 14px;
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .legend i {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      margin-right: 5px;
+      vertical-align: -1px;
+    }
+
+    .trend-toggle {
+      display: inline-flex;
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f8fafc;
+    }
+
+    .trend-toggle button {
+      border: 0;
+      background: transparent;
+      min-height: 28px;
+      padding: 0 9px;
+      border-radius: 6px;
+      color: #475467;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .trend-toggle button.active {
+      background: var(--ink);
+      color: #fff;
+    }
+
+    .funnel {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .funnel-step {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 13px;
+      background: #fbfcfe;
+    }
+
+    .funnel-step label { color: var(--muted); font-size: 12px; font-weight: 700; }
+    .funnel-step strong { display: block; margin-top: 6px; font-size: 24px; }
+    .funnel-step span { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
+
+    .task-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .task {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: start;
+      background: #fff;
+    }
+
+    .priority {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      color: #fff;
+      font-weight: 800;
+      background: var(--red);
+      font-size: 13px;
+    }
+
+    .priority.p1 { background: var(--amber); }
+    .priority.p2 { background: var(--cyan); }
+
+    .task h3 {
+      margin: 0;
+      font-size: 14px;
+    }
+
+    .task-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 8px 0 0;
+    }
+
+    .meta-chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 0 8px;
+      border-radius: 6px;
+      background: #f2f5f9;
+      color: #475467;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .task p {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .missing-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .missing-item {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 13px;
+      background: #fff;
+    }
+
+    .missing-item h3 {
+      margin: 0 0 8px;
+      font-size: 14px;
+    }
+
+    .missing-item p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .missing-item dl {
+      margin: 8px 0 0;
+      display: grid;
+      gap: 5px;
+      color: #475467;
+      font-size: 13px;
+    }
+
+    .missing-item div {
+      display: grid;
+      grid-template-columns: 70px 1fr;
+      gap: 8px;
+    }
+
+    .missing-item dt {
+      font-weight: 800;
+      color: #344054;
+    }
+
+    .mini-trend {
+      width: 96px;
+      height: 26px;
+    }
+
+    .report-sheet {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 26px;
+    }
+
+    .report-title {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 18px;
+      align-items: start;
+      border-bottom: 3px solid var(--ink);
+      padding-bottom: 14px;
+      margin-bottom: 18px;
+    }
+
+    .report-title h2 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .report-title p {
+      margin: 6px 0 0;
+      color: var(--muted);
+    }
+
+    .report-summary {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1.3fr;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .summary-box {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fbfcfe;
+    }
+
+    .summary-box b {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
+
+    .summary-box span {
+      color: #475467;
+      font-size: 13px;
+    }
+
+    .report-block {
+      margin-top: 18px;
+    }
+
+    .report-block h3 {
+      margin: 0 0 10px;
+      padding-left: 9px;
+      border-left: 4px solid var(--blue);
+      font-size: 16px;
+    }
+
+    .compact-list {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .compact-list li {
+      margin: 5px 0;
+    }
+
+    .num { font-variant-numeric: tabular-nums; }
+
+
+
+    @media (max-width: 980px) {
+      .layout { grid-template-columns: 1fr; padding: 14px; }
+      .sidebar { position: static; display: grid; grid-template-columns: repeat(2, 1fr); }
+      .kpi-grid, .two-col, .missing-grid, .report-summary { grid-template-columns: 1fr; }
+      .funnel { grid-template-columns: 1fr; }
+      .header-inner { grid-template-columns: 1fr; padding: 12px 14px; }
+      .actions { justify-content: flex-start; }
+      .score-bar { min-width: 0; grid-template-columns: 72px 1fr 42px; }
+      .report-title h2 { font-size: 21px; }
+      .report-sheet { padding: 20px; }
+    }
+
+    @media print {
+      body { background: #fff; }
+      .app-header, .sidebar, .dashboard-only { display: none !important; }
+      .layout { display: block; padding: 0; max-width: none; }
+      main { display: block; }
+      section { box-shadow: none; border: 0; border-radius: 0; }
+      .report-sheet { border: 0; border-radius: 0; padding: 0; }
+      .report-break { page-break-before: always; }
+    }
+  
+    .channel-selector {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      background: #f6f7f9;
+      border-radius: 8px;
+      border: 1px solid #d9dee8;
+    }
+    .channel-selector label {
+      font-size: 13px;
+      color: #667085;
+      font-weight: 500;
+    }
+    .channel-selector select {
+      height: 28px;
+      padding: 0 24px 0 8px;
+      font-size: 13px;
+      border: 1px solid #d9dee8;
+      border-radius: 6px;
+      background: #fff;
+      color: #1d2430;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 6px center;
+      background-size: 14px;
+    }
+    .channel-selector select:hover {
+      border-color: #2563eb;
+    }
+    .channel-selector select:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+    }
+    
+    .channel-selector {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      background: #f6f7f9;
+      border-radius: 8px;
+      border: 1px solid #d9dee8;
+    }
+    .channel-selector label {
+      font-size: 13px;
+      color: #667085;
+      font-weight: 500;
+    }
+    .channel-selector select {
+      height: 28px;
+      padding: 0 24px 0 8px;
+      font-size: 13px;
+      border: 1px solid #d9dee8;
+      border-radius: 6px;
+      background: #fff;
+      color: #1d2430;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 6px center;
+      background-size: 14px;
+    }
+    .channel-selector select:hover {
+      border-color: #2563eb;
+    }
+    .channel-selector select:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+    }
+    
+    .channel-selector {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      background: #f6f7f9;
+      border-radius: 8px;
+      border: 1px solid #d9dee8;
+    }
+    .channel-selector label {
+      font-size: 13px;
+      color: #667085;
+      font-weight: 500;
+    }
+    .channel-selector select {
+      height: 28px;
+      padding: 0 24px 0 8px;
+      font-size: 13px;
+      border: 1px solid #d9dee8;
+      border-radius: 6px;
+      background: #fff;
+      color: #1d2430;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 6px center;
+      background-size: 14px;
+    }
+    .channel-selector select:hover {
+      border-color: #2563eb;
+    }
+    .channel-selector select:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+    }
+    
+    .channel-selector {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      background: #f6f7f9;
+      border-radius: 8px;
+      border: 1px solid #d9dee8;
+    }
+    .channel-selector label {
+      font-size: 13px;
+      color: #667085;
+      font-weight: 500;
+    }
+    .channel-selector select {
+      height: 28px;
+      padding: 0 24px 0 8px;
+      font-size: 13px;
+      border: 1px solid #d9dee8;
+      border-radius: 6px;
+      background: #fff;
+      color: #1d2430;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 6px center;
+      background-size: 14px;
+    }
+    .channel-selector select:hover {
+      border-color: #2563eb;
+    }
+    .channel-selector select:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+    }
+    </style>
+</head>
+<body>
+  <header class="app-header"><div class="header-inner"><div class="title-block">
+    <h1>酒店 OTA 全面诊断报告</h1>
+    <p>贵阳璞悦·奢电竞酒店｜周期：2026-06-01 至 2026-06-10｜生成时间：2026-06-10 14:15:55</p>
+  </div><div class="actions">
+    <div class="channel-selector">
+      <label>选择渠道：</label>
+      <select id="channelSelector" onchange="switchChannel(this.value)">
+        <option value="all">全部渠道</option>
+        <option value="fliggy" selected>飞猪</option>
+        <option value="ctrip">携程</option>
+        <option value="meituan">美团</option>
+        <option value="elong">艺龙</option>
+      </select>
+    </div>
+    <button class="btn primary" onclick="window.print()">导出报告</button>
+  </div></div></header>
+  <div class="layout">
+    <nav class="sidebar dashboard-only">
+      <a href="#overview">顶部总览卡片</a><a href="#modules">模块得分条形图</a><a href="#trend">经营趋势图</a><a href="#funnel">流量漏斗对比</a><a href="#rooms">房型排行表</a><a href="#promotion">推广效率表</a><a href="#tasks">整改任务表</a><a href="#missing">补采提示</a>
+    </nav>
+    <main>
+      <section id="overview"><div class="section-head"><div><h2>顶部总览卡片</h2><p>规则、模块权重、封顶和展示组件均从《酒店OTA全面诊断系统_开发交付总文档_v2_精简版.xlsx》读取；当前数据源为本地测试表格，未接数据库。</p></div><span class="status warn">风险：中风险</span></div>
+        <div class="section-body"><div class="kpi-grid">
+          <div class="kpi"><label>总分</label><strong class="num">64 / 100</strong><span>原始分 63.8，转化封顶：转化下单模块低于60%，需优先核查浏览-支付转化。</span></div>
+          <div class="kpi"><label>数据可信度</label><strong class="num">36%</strong><span>缺失字段会进入补采提示，不包装成已获取</span></div>
+          <div class="kpi"><label>核心问题</label><strong>转化/趋势补采</strong><span>飞猪经营折线趋势、直通车点击/CPC未完整采集</span></div>
+          <div class="kpi"><label>复盘周期</label><strong class="num">7 / 14 天</strong><span>复盘日期：2026-06-17</span></div>
+        </div><div class="cap-alert"><b>封顶/校准规则</b><span><ul><li>数据可信度封顶：关键经营字段缺失超过30%，总分最高不得超过70。</li><li>转化封顶：转化下单模块低于60%，需优先核查浏览-支付转化。</li></ul></span><span class="status warn">按交付表校准</span></div></div>
+      </section>
+      <section id="modules"><div class="section-head"><div><h2>模块得分条形图</h2><p>8个模块得分 / 权重 / 得分率，低于60%标红，60-79%标黄</p></div></div><div class="section-body"><table class='data-table'><thead><tr><th>模块</th><th>得分</th><th>得分率</th><th>状态</th><th>核心依据</th></tr></thead><tbody><tr><td>M01 经营结果与收益锚点</td><td><div class='score-bar'><span>14.3 / 20</span><div class='bar-track'><div class='bar-fill warn' style='width:72%'></div></div><b>72%</b></div></td><td>72%</td><td><span class='status warn'>需要优化</span></td><td>订单结果：飞猪订单数与同行预订订单对比<br>收入结果：门店收入环比 -78.1%<br>RevPAR收益质量：RevPAR 114.14，近3月均值 122.00</td></tr><tr><td>M02 流量曝光与竞争圈</td><td><div class='score-bar'><span>10.5 / 15</span><div class='bar-track'><div class='bar-fill warn' style='width:70%'></div></div><b>70%</b></div></td><td>70%</td><td><span class='status warn'>需要优化</span></td><td>曝光竞争圈倍数：飞猪经营数据趋势未逐点补齐，按已确认入口和当前快照暂估<br>浏览竞争圈倍数：飞猪经营数据趋势未逐点补齐，按已确认入口和当前快照暂估<br>广告/非广告曝光结构：免费流量和广告流量结构</td></tr><tr><td>M03 转化下单与路径断点</td><td><div class='score-bar'><span>7.0 / 15</span><div class='bar-track'><div class='bar-fill bad' style='width:46%'></div></div><b>46%</b></div></td><td>46%</td><td><span class='status bad'>严重短板</span></td><td>曝光-浏览转化：转化趋势/流失数据不完整，按缺口降分<br>浏览-支付转化：转化趋势/流失数据不完整，按缺口降分<br>支付订单能力：转化趋势/流失数据不完整，按缺口降分</td></tr><tr><td>M04 价格收益与房态库存</td><td><div class='score-bar'><span>9.1 / 15</span><div class='bar-track'><div class='bar-fill warn' style='width:60%'></div></div><b>60%</b></div></td><td>60%</td><td><span class='status warn'>需要优化</span></td><td>库存销售速度：低效房型 7 个<br>房型RevPAR分层：低效房型 7 个<br>价格带覆盖：覆盖多个价格入口</td></tr><tr><td>M05 推广效率与ROI</td><td><div class='score-bar'><span>7.2 / 10</span><div class='bar-track'><div class='bar-fill warn' style='width:72%'></div></div><b>72%</b></div></td><td>72%</td><td><span class='status warn'>需要优化</span></td><td>推广ROI：推广ROI 14.68<br>推广订单产出：全网推有产出，但曝光/点击/CPC仍需补采<br>推广点击效率：全网推有产出，但曝光/点击/CPC仍需补采</td></tr><tr><td>M06 页面展示与入口基础</td><td><div class='score-bar'><span>4.5 / 10</span><div class='bar-track'><div class='bar-fill bad' style='width:45%'></div></div><b>45%</b></div></td><td>45%</td><td><span class='status bad'>严重短板</span></td><td>信息分与名称：页面质量来自模拟飞书表单，部分项为 partial<br>权益与服务配置：页面质量来自模拟飞书表单，部分项为 partial<br>图片视频亮点：页面质量来自模拟飞书表单，部分项为 partial</td></tr><tr><td>M07 口碑信任与服务响应</td><td><div class='score-bar'><span>6.8 / 8</span><div class='bar-track'><div class='bar-fill good' style='width:85%'></div></div><b>85%</b></div></td><td>85%</td><td><span class='status good'>正常/轻微可优化</span></td><td>点评分与大众点评：可见评价均分 4.50，未回复 5<br>点评数量与新增：可见评价均分 4.50，未回复 5<br>回复率与时效：可见评价均分 4.50，未回复 5</td></tr><tr><td>M08 执行复盘与数据完整度</td><td><div class='score-bar'><span>4.5 / 7</span><div class='bar-track'><div class='bar-fill warn' style='width:64%'></div></div><b>64%</b></div></td><td>64%</td><td><span class='status warn'>需要优化</span></td><td>数据完整度：关键字段完整度 36.4%<br>动作完成率：模拟表单已提供整改动作和异常复盘<br>整改前后对比：模拟表单已提供整改动作和异常复盘</td></tr></tbody></table></div></section>
+      <section id="trend"><div class="section-head"><div><h2>经营趋势图</h2><p>ADR、出租率、RevPAR、门店收入；月度趋势来自 JY03 测试数据</p></div></div><div class="section-body two-col"><div class="subpanel trend-wrap"><h3>月度经营趋势（鼠标悬停查看数值）</h3><div class="subpanel-content"><svg viewBox="0 0 640 250" class="trend-chart" aria-label="经营趋势图">
+
+
+<line x1="55" y1="215.0" x2="620" y2="215.0" stroke="#e5e7eb" stroke-width="1" stroke-dasharray="4,4"/>
+<text x="50" y="215.0" text-anchor="end" dominant-baseline="middle" style="font-size:11px;fill:#6b7280">-15</text>
+
+<line x1="55" y1="176.0" x2="620" y2="176.0" stroke="#e5e7eb" stroke-width="1" stroke-dasharray="4,4"/>
+<text x="50" y="176.0" text-anchor="end" dominant-baseline="middle" style="font-size:11px;fill:#6b7280">21</text>
+
+<line x1="55" y1="137.0" x2="620" y2="137.0" stroke="#e5e7eb" stroke-width="1" stroke-dasharray="4,4"/>
+<text x="50" y="137.0" text-anchor="end" dominant-baseline="middle" style="font-size:11px;fill:#6b7280">58</text>
+
+<line x1="55" y1="98.0" x2="620" y2="98.0" stroke="#e5e7eb" stroke-width="1" stroke-dasharray="4,4"/>
+<text x="50" y="98.0" text-anchor="end" dominant-baseline="middle" style="font-size:11px;fill:#6b7280">95</text>
+
+<line x1="55" y1="59.0" x2="620" y2="59.0" stroke="#e5e7eb" stroke-width="1" stroke-dasharray="4,4"/>
+<text x="50" y="59.0" text-anchor="end" dominant-baseline="middle" style="font-size:11px;fill:#6b7280">131</text>
+
+<line x1="55" y1="20.0" x2="620" y2="20.0" stroke="#e5e7eb" stroke-width="1" stroke-dasharray="4,4"/>
+<text x="50" y="20.0" text-anchor="end" dominant-baseline="middle" style="font-size:11px;fill:#6b7280">168</text>
+
+<polyline points='60.0,104.2 172.0,95.6 284.0,67.7 396.0,73.6 508.0,55.6 620.0,77.2' fill='none' stroke='#2563eb' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/>
+
+<g class="data-point">
+  <rect x="48.0" y="92.22371698236874" width="24" height="24" fill="transparent" style="cursor:pointer"
+        onmouseover="showTooltip(event, 'RevPAR', 88.75)" 
+        onmouseout="hideTooltip()"/>
+  <circle cx="60.0" cy="104.2" r="5" fill="#2563eb" opacity="0.9"/>
+  <circle cx="60.0" cy="104.2" r="2" fill="white"/>
+</g>
+
+<g class="data-point">
+  <rect x="160.0" y="83.6284820082585" width="24" height="24" fill="transparent" style="cursor:pointer"
+        onmouseover="showTooltip(event, 'RevPAR', 96.82)" 
+        onmouseout="hideTooltip()"/>
+  <circle cx="172.0" cy="95.6" r="5" fill="#2563eb" opacity="0.9"/>
+  <circle cx="172.0" cy="95.6" r="2" fill="white"/>
+</g>
+
+<g class="data-point">
+  <rect x="272.0" y="55.73390902536542" width="24" height="24" fill="transparent" style="cursor:pointer"
+        onmouseover="showTooltip(event, 'RevPAR', 123.01)" 
+        onmouseout="hideTooltip()"/>
+  <circle cx="284.0" cy="67.7" r="5" fill="#2563eb" opacity="0.9"/>
+  <circle cx="284.0" cy="67.7" r="2" fill="white"/>
+</g>
+
+<g class="data-point">
+  <rect x="384.0" y="61.62382840663301" width="24" height="24" fill="transparent" style="cursor:pointer"
+        onmouseover="showTooltip(event, 'RevPAR', 117.48)" 
+        onmouseout="hideTooltip()"/>
+  <circle cx="396.0" cy="73.6" r="5" fill="#2563eb" opacity="0.9"/>
+  <circle cx="396.0" cy="73.6" r="2" fill="white"/>
+</g>
+
+<g class="data-point">
+  <rect x="496.0" y="43.61324310152719" width="24" height="24" fill="transparent" style="cursor:pointer"
+        onmouseover="showTooltip(event, 'RevPAR', 134.39)" 
+        onmouseout="hideTooltip()"/>
+  <circle cx="508.0" cy="55.6" r="5" fill="#2563eb" opacity="0.9"/>
+  <circle cx="508.0" cy="55.6" r="2" fill="white"/>
+</g>
+
+<g class="data-point">
+  <rect x="608.0" y="65.18121190273317" width="24" height="24" fill="transparent" style="cursor:pointer"
+        onmouseover="showTooltip(event, 'RevPAR', 114.14)" 
+        onmouseout="hideTooltip()"/>
+  <circle cx="620.0" cy="77.2" r="5" fill="#2563eb" opacity="0.9"/>
+  <circle cx="620.0" cy="77.2" r="2" fill="white"/>
+</g>
+
+
+
+
+<line x1="55" y1="215.0" x2="620" y2="215.0" stroke="#e5e7eb" stroke-width="1" stroke-dasharray="4,4"/>
+<text x="50" y="215.0" text-anchor="end" dominant-baseline="middle" style="font-size:11px;fill:#6b7280">-15</text>
+
+<line x1="55" y1="176.0" x2="620" y2="176.0" stroke="#e5e7eb" stroke-width="1" stroke-dasharray="4,4"/>
+<text x="50" y="176.0" text-anchor="end" dominant-baseline="middle" style="font-size:11px;fill:#6b7280">21</text>
+
+<line x1="55" y1="137.0" x2="620" y2="137.0" stroke="#e5e7eb" stroke-width="1" stroke-dasharray="4,4"/>
+<text x="50" y="137.0" text-anchor="end" dominant-baseline="middle" style="font-size:11px;fill:#6b7280">58</text>
+
+<line x1="55" y1="98.0" x2="620" y2="98.0" stroke="#e5e7eb" stroke-width="1" stroke-dasharray="4,4"/>
+<text x="50" y="98.0" text-anchor="end" dominant-baseline="middle" style="font-size:11px;fill:#6b7280">95</text>
+
+<line x1="55" y1="59.0" x2="620" y2="59.0" stroke="#e5e7eb" stroke-width="1" stroke-dasharray="4,4"/>
+<text x="50" y="59.0" text-anchor="end" dominant-baseline="middle" style="font-size:11px;fill:#6b7280">131</text>
+
+<line x1="55" y1="20.0" x2="620" y2="20.0" stroke="#e5e7eb" stroke-width="1" stroke-dasharray="4,4"/>
+<text x="50" y="20.0" text-anchor="end" dominant-baseline="middle" style="font-size:11px;fill:#6b7280">168</text>
+
+<polyline points='60.0,69.8 172.0,64.0 284.0,47.0 396.0,44.4 508.0,36.2 620.0,48.8' fill='none' stroke='#168a4a' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/>
+
+<g class="data-point">
+  <rect x="48.0" y="57.80017369076489" width="24" height="24" fill="transparent" style="cursor:pointer"
+        onmouseover="showTooltip(event, 'ADR', 121.07)" 
+        onmouseout="hideTooltip()"/>
+  <circle cx="60.0" cy="69.8" r="5" fill="#168a4a" opacity="0.9"/>
+  <circle cx="60.0" cy="69.8" r="2" fill="white"/>
+</g>
+
+<g class="data-point">
+  <rect x="160.0" y="51.95285770466015" width="24" height="24" fill="transparent" style="cursor:pointer"
+        onmouseover="showTooltip(event, 'ADR', 126.56)" 
+        onmouseout="hideTooltip()"/>
+  <circle cx="172.0" cy="64.0" r="5" fill="#168a4a" opacity="0.9"/>
+  <circle cx="172.0" cy="64.0" r="2" fill="white"/>
+</g>
+
+<g class="data-point">
+  <rect x="272.0" y="34.964753883463345" width="24" height="24" fill="transparent" style="cursor:pointer"
+        onmouseover="showTooltip(event, 'ADR', 142.51)" 
+        onmouseout="hideTooltip()"/>
+  <circle cx="284.0" cy="47.0" r="5" fill="#168a4a" opacity="0.9"/>
+  <circle cx="284.0" cy="47.0" r="2" fill="white"/>
+</g>
+
+<g class="data-point">
+  <rect x="384.0" y="32.419201022481474" width="24" height="24" fill="transparent" style="cursor:pointer"
+        onmouseover="showTooltip(event, 'ADR', 144.90)" 
+        onmouseout="hideTooltip()"/>
+  <circle cx="396.0" cy="44.4" r="5" fill="#168a4a" opacity="0.9"/>
+  <circle cx="396.0" cy="44.4" r="2" fill="white"/>
+</g>
+
+<g class="data-point">
+  <rect x="496.0" y="24.25" width="24" height="24" fill="transparent" style="cursor:pointer"
+        onmouseover="showTooltip(event, 'ADR', 152.57)" 
+        onmouseout="hideTooltip()"/>
+  <circle cx="508.0" cy="36.2" r="5" fill="#168a4a" opacity="0.9"/>
+  <circle cx="508.0" cy="36.2" r="2" fill="white"/>
+</g>
+
+<g class="data-point">
+  <rect x="608.0" y="36.7540964803041" width="24" height="24" fill="transparent" style="cursor:pointer"
+        onmouseover="showTooltip(event, 'ADR', 140.83)" 
+        onmouseout="hideTooltip()"/>
+  <circle cx="620.0" cy="48.8" r="5" fill="#168a4a" opacity="0.9"/>
+  <circle cx="620.0" cy="48.8" r="2" fill="white"/>
+</g>
+
+
+</svg><div class="legend"><span><i style="background:#2563eb"></i>RevPAR</span><span><i style="background:#168a4a"></i>ADR</span></div></div></div><div class="subpanel"><h3>月度经营数据</h3><table class='data-table'><thead><tr><th>月份</th><th>ADR</th><th>出租率</th><th>RevPAR</th><th>门店收入</th><th>收入环比</th></tr></thead><tbody><tr><td>2026-01</td><td>121.07</td><td>73.3%</td><td>88.75</td><td>85,291.10</td><td>首月/无环比</td></tr><tr><td>2026-02</td><td>126.56</td><td>76.5%</td><td>96.82</td><td>84,036.88</td><td>-1.5%</td></tr><tr><td>2026-03</td><td>142.51</td><td>86.3%</td><td>123.01</td><td>118,215.59</td><td>40.7%</td></tr><tr><td>2026-04</td><td>144.90</td><td>81.1%</td><td>117.48</td><td>109,251.80</td><td>-7.6%</td></tr><tr><td>2026-05</td><td>152.57</td><td>88.1%</td><td>134.39</td><td>129,151.87</td><td>18.2%</td></tr><tr><td>2026-06</td><td>140.83</td><td>81.0%</td><td>114.14</td><td>28,306.40</td><td>-78.1%</td></tr></tbody></table></div></div></section>
+      <section id="funnel"><div class="section-head"><div><h2>流量漏斗对比</h2><p>各渠道流量数据对比</p></div><span class="status bad">趋势未完整</span></div><div class="section-body">
+<div data-channel-section="fliggy" style="display: block">
+  <h4 style="color:#2563eb;margin-bottom:8px">飞猪流量漏斗</h4>
+  <table class='data-table'><thead><tr><th>数据项</th><th>当前值</th><th>口径</th><th>判断</th></tr></thead><tbody><tr><td>昨日预订订单量</td><td>38</td><td>飞猪数据</td><td>订单结果样本</td></tr><tr><td>同行预订订单</td><td>2</td><td>飞猪竞争圈</td><td>竞争对比</td></tr><tr><td>流失订单数</td><td>2</td><td>统计周期内</td><td>流失损失</td></tr><tr><td>流失金额</td><td>978</td><td>统计周期内</td><td>影响收益校准</td></tr><tr><td>经营折线趋势</td><td>已采集</td><td>飞猪经营数据页</td><td>数据完整性</td></tr></tbody></table>
+</div>
+<div data-channel-section="ctrip" style="display: none">
+  <h4 style="color:#2563eb;margin-bottom:8px">携程流量漏斗</h4>
+  <table class='data-table'><thead><tr><th>数据项</th><th>当前值</th><th>口径</th><th>判断</th></tr></thead><tbody><tr><td>昨日预订订单量</td><td>114</td><td>携程数据</td><td>订单结果样本</td></tr><tr><td>同行预订订单</td><td>15</td><td>携程竞争圈</td><td>竞争对比</td></tr><tr><td>流失订单数</td><td>未获取</td><td>统计周期内</td><td>流失损失</td></tr><tr><td>流失金额</td><td>200</td><td>统计周期内</td><td>影响收益校准</td></tr><tr><td>经营折线趋势</td><td>待补采</td><td>携程经营数据页</td><td>数据完整性</td></tr></tbody></table>
+</div>
+<div data-channel-section="meituan" style="display: none">
+  <h4 style="color:#2563eb;margin-bottom:8px">美团流量漏斗</h4>
+  <table class='data-table'><thead><tr><th>数据项</th><th>当前值</th><th>口径</th><th>判断</th></tr></thead><tbody><tr><td>昨日预订订单量</td><td>76</td><td>美团数据</td><td>订单结果样本</td></tr><tr><td>同行预订订单</td><td>10</td><td>美团竞争圈</td><td>竞争对比</td></tr><tr><td>流失订单数</td><td>未获取</td><td>统计周期内</td><td>流失损失</td></tr><tr><td>流失金额</td><td>150</td><td>统计周期内</td><td>影响收益校准</td></tr><tr><td>经营折线趋势</td><td>待补采</td><td>美团经营数据页</td><td>数据完整性</td></tr></tbody></table>
+</div>
+<div data-channel-section="elong" style="display: none">
+  <h4 style="color:#2563eb;margin-bottom:8px">艺龙流量漏斗</h4>
+  <table class='data-table'><thead><tr><th>数据项</th><th>当前值</th><th>口径</th><th>判断</th></tr></thead><tbody><tr><td>昨日预订订单量</td><td>38</td><td>艺龙数据</td><td>订单结果样本</td></tr><tr><td>同行预订订单</td><td>5</td><td>艺龙竞争圈</td><td>竞争对比</td></tr><tr><td>流失订单数</td><td>未获取</td><td>统计周期内</td><td>流失损失</td></tr><tr><td>流失金额</td><td>80</td><td>统计周期内</td><td>影响收益校准</td></tr><tr><td>经营折线趋势</td><td>待补采</td><td>艺龙经营数据页</td><td>数据完整性</td></tr></tbody></table>
+</div></div></section>
+      <section id="rooms"><div class="section-head"><div><h2>房型排行表</h2><p>房型、房数、ADR、出租率、RevPAR，低效房型置顶</p></div></div><div class="section-body"><table class='data-table'><thead><tr><th>房型名称</th><th>房数/可售间夜</th><th>平均房价</th><th>出租率</th><th>RevPAR</th><th>系统判断</th><th>整改建议</th></tr></thead><tbody><tr><td>汇赢·麻将四人间</td><td>160</td><td>97.69</td><td><span class='status bad'>48.5%</span></td><td>47.36</td><td><span class='status bad'>低效房型</span></td><td>调价、改造、下架或重排展示</td></tr><tr><td>汇赢·麻将四人间</td><td>160</td><td>112.44</td><td><span class='status bad'>48.5%</span></td><td>54.51</td><td><span class='status bad'>低效房型</span></td><td>调价、改造、下架或重排展示</td></tr><tr><td>舒享丨上下铺麻将房</td><td>125</td><td>114.36</td><td><span class='status bad'>52.0%</span></td><td>59.47</td><td><span class='status bad'>低效房型</span></td><td>调价、改造、下架或重排展示</td></tr><tr><td>乐享·亲子三人间</td><td>33</td><td>107.93</td><td><span class='status bad'>59.8%</span></td><td>64.49</td><td><span class='status bad'>低效房型</span></td><td>调价、改造、下架或重排展示</td></tr><tr><td>汇赢·麻将双床房</td><td>160</td><td>112.44</td><td><span class='status bad'>0.0%</span></td><td>72.38</td><td><span class='status bad'>低效房型</span></td><td>调价、改造、下架或重排展示</td></tr><tr><td>至臻·电竞大床房</td><td>1749</td><td>136.70</td><td><span class='status bad'>0.0%</span></td><td>111.61</td><td><span class='status bad'>低效房型</span></td><td>调价、改造、下架或重排展示</td></tr><tr><td>至臻·电竞双床房</td><td>795</td><td>130.25</td><td><span class='status bad'>0.0%</span></td><td>116.73</td><td><span class='status bad'>低效房型</span></td><td>调价、改造、下架或重排展示</td></tr><tr><td>开黑·电竞双床房</td><td>159</td><td>138.77</td><td><span class='status good'>80.0%</span></td><td>111.06</td><td><span class='status good'>健康房型</span></td><td>保持监控，观察价格和库存</td></tr><tr><td>独享·电竞单人间</td><td>125</td><td>128.60</td><td><span class='status good'>89.4%</span></td><td>114.96</td><td><span class='status good'>健康房型</span></td><td>保持监控，观察价格和库存</td></tr><tr><td>竞技·电竞四人间</td><td>159</td><td>219.66</td><td><span class='status warn'>78.0%</span></td><td>171.31</td><td><span class='status warn'>中等房型</span></td><td>保持监控，观察价格和库存</td></tr></tbody></table></div></section>
+      <section id="promotion"><div class="section-head"><div><h2>推广效率表</h2><p>各渠道推广数据对比</p></div><span class="status warn">CPC缺失</span></div><div class="section-body">
+<div data-channel-section="fliggy" style="display: block">
+  <h4 style="color:#168a4a;margin-bottom:8px">飞猪推广效率</h4>
+  <table class='data-table'><thead><tr><th>指标</th><th>值</th><th>口径</th><th>判断</th></tr></thead><tbody><tr><td>推广状态</td><td>推广中：钻石推广包</td><td>飞猪推广</td><td>推广开关</td></tr><tr><td>推广订单金额</td><td>3,423.77</td><td>近30日</td><td>推广产出</td></tr><tr><td>推广订单数</td><td>未获取</td><td>近30日</td><td>推广产出</td></tr><tr><td>总花费</td><td>233.27</td><td>近30日</td><td>推广成本</td></tr><tr><td>ROI</td><td>14.68</td><td>订单金额/总花费</td><td>推广效率</td></tr></tbody></table>
+</div>
+<div data-channel-section="ctrip" style="display: none">
+  <h4 style="color:#168a4a;margin-bottom:8px">携程推广效率</h4>
+  <table class='data-table'><thead><tr><th>指标</th><th>值</th><th>口径</th><th>判断</th></tr></thead><tbody><tr><td>推广状态</td><td>正常</td><td>携程推广</td><td>推广开关</td></tr><tr><td>推广订单金额</td><td>12,000.00</td><td>近30日</td><td>推广产出</td></tr><tr><td>推广订单数</td><td>8</td><td>近30日</td><td>推广产出</td></tr><tr><td>总花费</td><td>1,500.00</td><td>近30日</td><td>推广成本</td></tr><tr><td>ROI</td><td>8.00</td><td>订单金额/总花费</td><td>推广效率</td></tr></tbody></table>
+</div>
+<div data-channel-section="meituan" style="display: none">
+  <h4 style="color:#168a4a;margin-bottom:8px">美团推广效率</h4>
+  <table class='data-table'><thead><tr><th>指标</th><th>值</th><th>口径</th><th>判断</th></tr></thead><tbody><tr><td>推广状态</td><td>正常</td><td>美团推广</td><td>推广开关</td></tr><tr><td>推广订单金额</td><td>6,500.00</td><td>近30日</td><td>推广产出</td></tr><tr><td>推广订单数</td><td>5</td><td>近30日</td><td>推广产出</td></tr><tr><td>总花费</td><td>800.00</td><td>近30日</td><td>推广成本</td></tr><tr><td>ROI</td><td>8.12</td><td>订单金额/总花费</td><td>推广效率</td></tr></tbody></table>
+</div>
+<div data-channel-section="elong" style="display: none">
+  <h4 style="color:#168a4a;margin-bottom:8px">艺龙推广效率</h4>
+  <table class='data-table'><thead><tr><th>指标</th><th>值</th><th>口径</th><th>判断</th></tr></thead><tbody><tr><td>推广状态</td><td>正常</td><td>艺龙推广</td><td>推广开关</td></tr><tr><td>推广订单金额</td><td>2,800.00</td><td>近30日</td><td>推广产出</td></tr><tr><td>推广订单数</td><td>2</td><td>近30日</td><td>推广产出</td></tr><tr><td>总花费</td><td>300.00</td><td>近30日</td><td>推广成本</td></tr><tr><td>ROI</td><td>9.33</td><td>订单金额/总花费</td><td>推广效率</td></tr></tbody></table>
+</div></div></section>
+      <section id="tasks"><div class="section-head"><div><h2>整改任务表</h2><p>动作、负责人、截止时间、复盘指标，P0/P1/P2优先级</p></div></div><div class="section-body"><table class='data-table'><thead><tr><th>优先级</th><th>负责人</th><th>整改动作</th><th>复盘指标</th><th>周期</th></tr></thead><tbody><tr><td>P0</td><td>OTA运营</td><td>补采飞猪经营数据折线趋势和直通车曝光/点击/CPC</td><td>字段完整度、推广ROI、浏览-支付转化</td><td>3天</td></tr><tr><td>P0</td><td>OTA运营</td><td>检查房型权益、活动价、退改规则和点评信任项</td><td>浏览-支付转化率、支付订单、RevPAR</td><td>7天</td></tr><tr><td>P1</td><td>收益经理</td><td>复盘低效房型价格和库存，优先处理出租率低于60%的房型</td><td>房型RevPAR、出租率、ADR</td><td>7天</td></tr><tr><td>P1</td><td>门店店长</td><td>补拍首图、电竞设备细节和房型差异图，完善入口标签</td><td>详情页浏览、转化率、页面质量</td><td>14天</td></tr><tr><td>P2</td><td>运营负责人</td><td>建立整改动作日志和7/14天复盘机制</td><td>动作完成率、订单、收入、RevPAR</td><td>14天</td></tr></tbody></table></div></section>
+      <section id="missing"><div class="section-head"><div><h2>补采提示</h2><p>缺失字段、影响、采集方式；数据缺失不等于经营差，但影响可信度</p></div></div><div class="section-body"><table class='data-table'><thead><tr><th>缺失字段</th><th>当前状态</th><th>处理建议</th><th>责任来源</th></tr></thead><tbody><tr><td>RevPAR</td><td>当前页面未直接看到</td><td>由房费收入/可售房量或 PMS 计算</td><td>系统计算/PMS</td></tr><tr><td>ADR</td><td>飞猪显示间夜单价</td><td>可映射为飞猪口径 ADR，与 PMS ADR 区分</td><td>飞猪/系统计算</td></tr><tr><td>CPC/点击均价</td><td>全网推未展示，直通车待确认</td><td>从直通车数据中心或报表导出采集</td><td>飞猪直通车</td></tr><tr><td>推广曝光/点击</td><td>全网推未展示，直通车待确认</td><td>从直通车数据中心/API/导出采集</td><td>飞猪直通车</td></tr><tr><td>图片质量/HOS 历史/入口标签质量</td><td>入口可查，质量判断需人工或视觉模型</td><td>飞书表单补采，必要时接视觉模型</td><td>人工/模型</td></tr><tr><td>核心竞对名单</td><td>同行动态有同行列表/价库对比</td><td>飞书表单维护 1-4 个核心竞对</td><td>人工</td></tr><tr><td>整改动作与复盘原因</td><td>平台不自动知道业务原因</td><td>飞书表单/任务中心记录</td><td>人工</td></tr></tbody></table></div></section>
+    </main>
+  </div>
+  
+<script>
+var tooltip = null;
+
+function showTooltip(event, label, value, x, y) {
+  if (!tooltip) {
+    tooltip = document.createElement('div');
+    tooltip.className = 'chart-tooltip';
+    tooltip.style.cssText = 'position:absolute; pointer-events:none; padding:6px 10px; background:#1d2430; color:#fff; border-radius:4px; font-size:12px; z-index:1000; box-shadow:0 2px 8px rgba(0,0,0,0.3);';
+    document.body.appendChild(tooltip);
+  }
+  tooltip.innerHTML = '<strong>' + label + '</strong><br/>' + value.toFixed(2);
+  tooltip.style.left = (event.clientX + 10) + 'px';
+  tooltip.style.top = (event.clientY - 30) + 'px';
+  tooltip.style.display = 'block';
+}
+
+function hideTooltip() {
+  if (tooltip) {
+    tooltip.style.display = 'none';
+  }
+}
+
+function switchChannel(channel) {
+  document.querySelectorAll('[data-channel-section]').forEach(function(el) {
+    el.style.display = 'none';
+  });
+  
+  if (channel === 'all') {
+    document.querySelectorAll('[data-channel-section]').forEach(function(el) {
+      el.style.display = '';
+    });
+  } else {
+    document.querySelectorAll('[data-channel-section="' + channel + '"]').forEach(function(el) {
+      el.style.display = '';
+    });
+  }
+  
+  document.querySelectorAll('.channel-tab').forEach(function(tab) {
+    tab.classList.remove('active');
+  });
+  document.querySelector('[data-channel-tab="' + channel + '"]')?.classList.add('active');
+  
+  document.getElementById('channelSelector').value = channel;
+}
+</script>
+
+</body>
+</html>
