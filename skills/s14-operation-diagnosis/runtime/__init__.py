@@ -200,9 +200,8 @@ class S14OperationDiagnosis:
 风险等级：{risk_text}
 
 报告链接：
-{report_url}
-
-说明：当前为 S14 测试机器人返回结果，不影响正式酒店 OTA Agent。"""
+🔗点击查看报告： {report_url}
+"""
 
     def _calculated_fields(self) -> list[str]:
         return [
@@ -383,8 +382,7 @@ class S14OperationDiagnosis:
             ["P1", "运营负责人", "检查曝光、浏览、支付转化和推广 ROI 的断点", "曝光、浏览、支付转化率、ROI", "7天"],
             ["P2", "门店店长", "完善图片、视频、房型卖点和入口标签", "页面质量、转化率", "14天"],
         ]
-
-        # report_note = "本报告由 S14 OpenClaw 独立 Skill 生成；OpenClaw 只传控制字段，经营、OTA、推广、口碑数据均由 S14 从数据库读取。"
+"
 
         html_text = f"""<!doctype html>
 <html lang="zh-CN">
