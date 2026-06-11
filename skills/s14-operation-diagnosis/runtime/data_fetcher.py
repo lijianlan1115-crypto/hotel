@@ -216,6 +216,9 @@ class DataFetcher:
         except Exception:
             return []
 
+    def _is_multi_platform(self, platform: str | None) -> bool:
+        return str(platform or "").lower() in {"", "all", "multi", "multi_channel", "多渠道", "全渠道"}
+
     def _fetch_source_table(
         self,
         conn: Any,
@@ -232,6 +235,7 @@ class DataFetcher:
             return self._fetch_wide_table(conn, db_kind, table_name, spec, hotel_id, period, platform)
         if table_name == "fact_monthly_metrics" and "metric_name" in columns and "metric_value" in columns:
             return self._fetch_wide_table(conn, db_kind, table_name, spec, hotel_id, period, platform)
+
         column_map = {column.lower(): column for column in columns}
         hotel_col = self._first_column(column_map, spec.get("hotel_aliases", []))
         date_col = self._first_column(column_map, spec.get("date_aliases", []))
@@ -249,16 +253,19 @@ class DataFetcher:
         placeholder = "?" if db_kind == "sqlite" else "%s"
         where: list[str] = []
         params: list[Any] = []
+
         if hotel_col:
             where.append(f"`{hotel_col}` = {placeholder}")
             params.append(hotel_id)
+
         if date_col and period_end_col:
             where.append(f"`{period_end_col}` >= {placeholder} and `{date_col}` <= {placeholder}")
             params.extend([period["start"], period["end"]])
         elif date_col:
             where.append(f"`{date_col}` >= {placeholder} and `{date_col}` <= {placeholder}")
             params.extend([period["start"], period["end"]])
-        if platform and platform != "multi" and platform_col:
+
+        if not self._is_multi_platform(platform) and platform_col:
             where.append(f"`{platform_col}` in ({placeholder}, {placeholder})")
             params.extend([platform, self._platform_name(platform)])
 
@@ -290,7 +297,21 @@ class DataFetcher:
     ) -> list[dict[str, Any]]:
         """Fetch and transform wide table format (metric_name + metric_value) to narrow format."""
         placeholder = "?" if db_kind == "sqlite" else "%s"
-        
+
+        columns = self._table_columns(conn, db_kind, table_name)
+        column_map = {column.lower(): column for column in columns}
+
+        date_col = self._first_column(column_map, ["business_date", "data_date", "biz_date", "stat_date", "date", "month", "stat_month"])
+        hotel_col = self._first_column(column_map, ["hotel_id", "hotel_code", "酒店ID", "门店ID"])
+        hotel_name_col = self._first_column(column_map, ["hotel_name", "酒店名称", "门店名称"])
+        platform_col = self._first_column(column_map, ["platform", "channel", "ota_channel", "channel_source", "渠道", "平台", "OTA渠道"])
+
+        metric_name_col = self._first_column(column_map, ["metric_name", "指标名称"])
+        metric_value_col = self._first_column(column_map, ["metric_value", "指标值"])
+
+        if not date_col or not metric_name_col or not metric_value_col:
+            return []
+
         # 指标名称到字段名的映射
         metric_mapping = {
             "revpar": "revpar",
@@ -399,12 +420,29 @@ class DataFetcher:
             "review_reason": "review_reason",
         }
 
+        selected_cols = [date_col, metric_name_col, metric_value_col]
+        if hotel_col:
+            selected_cols.append(hotel_col)
+        if hotel_name_col:
+            selected_cols.append(hotel_name_col)
+        if platform_col:
+            selected_cols.append(platform_col)
+
         sql = f"""
-            SELECT business_date, hotel_name, metric_name, metric_value
+            SELECT {', '.join(f'`{col}`' for col in selected_cols)}
             FROM `{table_name}`
-            WHERE business_date >= {placeholder} AND business_date <= {placeholder}
+            WHERE `{date_col}` >= {placeholder}
+              AND `{date_col}` <= {placeholder}
         """
-        params = [period["start"], period["end"]]
+        params: list[Any] = [period["start"], period["end"]]
+
+        if hotel_col:
+            sql += f" AND `{hotel_col}` = {placeholder}"
+            params.append(hotel_id)
+
+        if not self._is_multi_platform(platform) and platform_col:
+            sql += f" AND `{platform_col}` IN ({placeholder}, {placeholder})"
+            params.extend([platform, self._platform_name(platform)])
 
         try:
             if db_kind == "sqlite":
@@ -416,40 +454,40 @@ class DataFetcher:
         except Exception:
             return []
 
-        # 按日期分组，将宽表转换为窄表
-        by_date: dict[str, dict[str, Any]] = {}
+        by_key: dict[str, dict[str, Any]] = {}
         for row in rows:
-            row_dict = dict(row) if isinstance(row, dict) else {
-                "business_date": row[0],
-                "hotel_name": row[1],
-                "metric_name": row[2],
-                "metric_value": row[3]
-            }
-            date_key = str(row_dict.get("business_date", ""))
-            if date_key not in by_date:
-                by_date[date_key] = {
+            row_dict = dict(row) if isinstance(row, dict) else dict(zip(selected_cols, row))
+
+            date_key = str(row_dict.get(date_col, ""))
+            platform_value = str(row_dict.get(platform_col, platform or "")).strip() if platform_col else str(platform or "")
+            group_key = f"{date_key}|{platform_value}"
+
+            if group_key not in by_key:
+                by_key[group_key] = {
                     "source_table": table_name,
                     "time_grain": spec.get("time_grain"),
                     "data_date": date_key,
                     "period_start_field": date_key,
-                    "hotel_name": row_dict.get("hotel_name"),
+                    "hotel_id": row_dict.get(hotel_col) if hotel_col else hotel_id,
+                    "hotel_name": row_dict.get(hotel_name_col) if hotel_name_col else None,
+                    "platform": platform_value or platform,
+                    "channel_source": self._platform_name(platform_value or platform) if (platform_value or platform) else None,
                 }
-            
-            metric_name = row_dict.get("metric_name", "")
-            metric_value = row_dict.get("metric_value")
-            field_name = metric_mapping.get(metric_name)
-            if field_name and metric_value is not None:
-                # Convert Decimal, int, float to float
-                if isinstance(metric_value, (int, float)) or hasattr(metric_value, 'as_tuple'):  # Check for Decimal
-                    val = float(metric_value)
-                    # Occupancy rates are stored as percentages (e.g., 79.88 = 79.88%), convert to decimal
-                    if field_name == "occupancy" and val > 1:
-                        val = val / 100.0
-                    by_date[date_key][field_name] = val
-                else:
-                    by_date[date_key][field_name] = metric_value
 
-        return list(by_date.values())
+            metric_name = row_dict.get(metric_name_col, "")
+            metric_value = row_dict.get(metric_value_col)
+            field_name = metric_mapping.get(str(metric_name))
+
+            if field_name and metric_value is not None:
+                if isinstance(metric_value, (int, float)) or hasattr(metric_value, "as_tuple"):
+                    val = float(metric_value)
+                    if field_name in {"occupancy", "booking_conversion_rate", "payment_conversion_rate", "bad_review_rate", "field_completeness"} and val > 1:
+                        val = val / 100.0
+                    by_key[group_key][field_name] = val
+                else:
+                    by_key[group_key][field_name] = metric_value
+
+        return list(by_key.values())
 
     def _first_column(self, column_map: dict[str, str], aliases: list[str]) -> str | None:
         for alias in aliases:
@@ -804,7 +842,7 @@ class DataFetcher:
         for record in records:
             if record.get("hotel_id") and str(record["hotel_id"]) != hotel_id:
                 continue
-            if platform and platform != "multi" and record.get("platform") and str(record["platform"]) not in {platform, self._platform_name(platform)}:
+            if not self._is_multi_platform(platform) and record.get("platform") and str(record["platform"]) not in {platform, self._platform_name(platform)}:
                 continue
             record_start = str(record.get("period_start_field") or record.get("data_date") or "")
             record_end = str(record.get("period_end_field") or record.get("data_date") or "")
@@ -858,4 +896,6 @@ class DataFetcher:
             "qunar": "去哪儿",
             "douyin": "抖音",
             "multi": "多渠道",
+            "all": "多渠道",
+            "multi_channel": "多渠道",
         }.get(platform, platform)
