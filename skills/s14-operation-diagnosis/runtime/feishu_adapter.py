@@ -123,6 +123,7 @@ def handle_feishu_text_message(text: str) -> str | None:
     result = run_s14_local_table_mode()
     return build_feishu_reply(result)
 
+
 def handle_feishu_excel(file_path: str) -> str:
     """Handle a downloaded Feishu Excel attachment.
 
