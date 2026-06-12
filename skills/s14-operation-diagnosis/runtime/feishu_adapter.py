@@ -86,16 +86,11 @@ def _replace_report_url_filename(report_url: str, filename: str) -> str:
         return report_url
     parts = urlsplit(str(report_url))
     path_parts = parts.path.rsplit("/", 1)
-    if len(path_parts) == 2:
-        new_path = f"{path_parts[0]}/{filename}"
-    else:
-        new_path = filename
+    new_path = f"{path_parts[0]}/{filename}" if len(path_parts) == 2 else filename
     return urlunsplit((parts.scheme, parts.netloc, new_path, "", parts.fragment))
 
 
 def _cleanup_old_reports(report_dir: Path, retention_days: int = S14_REPORT_RETENTION_DAYS) -> None:
-    """Delete archived S14 HTML reports older than the retention window."""
-
     if retention_days <= 0 or not report_dir.exists():
         return
     cutoff = datetime.now().timestamp() - retention_days * 86400
@@ -108,26 +103,20 @@ def _cleanup_old_reports(report_dir: Path, retention_days: int = S14_REPORT_RETE
 
 
 def _freeze_report_file(prepared: dict[str, Any], run_id: str) -> None:
-    """Copy the latest fixed report to a unique file so old Feishu links keep working.
+    """Snapshot current report to ota_diagnosis_report_<run_id>.html.
 
-    The core report renderer may still write ``ota_diagnosis_report.html`` for
-    compatibility. Before replying to Feishu, this adapter snapshots that file
-    to ``ota_diagnosis_report_<run_id>.html`` and rewrites ``report_url``.
+    This prevents new reports from overwriting old Feishu links.
     """
-
     report_path_text = str(prepared.get("report_file_path") or "").strip()
     if not report_path_text:
         return
-
     source_path = Path(report_path_text)
     if not source_path.exists() or not source_path.is_file():
         return
-
     report_dir = source_path.parent
     safe_run_id = "".join(ch for ch in str(run_id) if ch.isdigit()) or _new_run_id()
     unique_name = f"ota_diagnosis_report_{safe_run_id}.html"
     unique_path = report_dir / unique_name
-
     try:
         if source_path.resolve() != unique_path.resolve():
             unique_path.write_bytes(source_path.read_bytes())
@@ -194,6 +183,7 @@ def _module_line(index: int, item: dict[str, Any]) -> str:
 
 
 def _rich_markdown_reply(result: dict[str, Any]) -> str:
+    """Legacy text fallback only. Card handlers must not call this."""
     data = _prepare_current_result(result)
     platform = _platform_text(data.get("platform") or data.get("channel_source"))
     score = float(data.get("final_score") or 0)
@@ -203,22 +193,13 @@ def _rich_markdown_reply(result: dict[str, Any]) -> str:
     caps = data.get("caps") or []
     missing = data.get("missing_fields") or []
     report_url = str(data.get("report_url") or "")
-
-    lines = [
-        f"**{platform} {_fmt_num(score, 0)}/100 {risk}｜周期 {period}｜S14诊断结果**",
-        "",
-        "```text",
-    ]
+    lines = [f"**{platform} {_fmt_num(score, 0)}/100 {risk}｜周期 {period}｜S14诊断结果**", "", "```text"]
     if modules:
         for idx, item in enumerate(modules[:8], 1):
             lines.append(_module_line(idx, item))
     else:
-        lines.extend([
-            f"综合得分 {_fmt_num(score, 0)}/100",
-            f"风险等级 {risk}",
-        ])
+        lines.extend([f"综合得分 {_fmt_num(score, 0)}/100", f"风险等级 {risk}"])
     lines.append("```")
-
     lines.append("")
     lines.append("**诊断重点：**")
     if caps:
@@ -231,21 +212,6 @@ def _rich_markdown_reply(result: dict[str, Any]) -> str:
             lines.append(f"- ⚠️ {field}：{suggestion}")
     else:
         lines.append("- 未触发强封顶，继续关注字段完整度和数据新鲜度。")
-
-    if missing:
-        lines.append("")
-        lines.append("**修复内容：**")
-        lines.append("| Bug | 问题 | 修复 |")
-        lines.append("|---|---|---|")
-        for item in missing[:3]:
-            if isinstance(item, dict):
-                field = str(item.get("field") or "字段")
-                issue = str(item.get("status") or "缺失")
-                fix = str(item.get("suggestion") or "补采或检查字段映射")
-            else:
-                field, issue, fix = str(item), "缺失", "补采或检查字段映射"
-            lines.append(f"| {field} | {issue} | {fix} |")
-
     if report_url:
         lines.append("")
         lines.append(f"📊 {report_url}")
@@ -260,7 +226,6 @@ def run_s14_local_table_mode(text: str = "") -> dict[str, Any]:
         from runtime import S14OperationDiagnosis
     except ImportError as exc:
         raise RuntimeError(f"S14 Skill runtime not importable: {exc}") from exc
-
     today = date.today()
     period_start = today - timedelta(days=9)
     period_end = today
@@ -331,7 +296,7 @@ def handle_feishu_text_message_card(text: str) -> dict[str, Any] | str | None:
         return None
     try:
         result = run_s14_local_table_mode(text)
-        return build_feishu_reply(result)
+        return build_feishu_card_reply(result)
     except Exception:
         return FORMAT_ERROR_TEXT
 
@@ -353,6 +318,6 @@ def handle_feishu_excel_card(file_path: str) -> dict[str, Any] | str:
             file_path,
             {"report_output_dir": S14_REPORT_OUTPUT_DIR, "public_base_url": S14_PUBLIC_BASE_URL},
         )
-        return build_feishu_reply(result)
+        return build_feishu_card_reply(result)
     except Exception:
         return FORMAT_ERROR_TEXT
