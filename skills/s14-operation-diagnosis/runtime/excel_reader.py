@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+import re
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -8,6 +12,8 @@ except ImportError:
 
 
 CHANNEL_LABELS = {
+    "all": "全部渠道",
+    "multi": "多渠道",
     "fliggy": "飞猪",
     "meituan": "美团",
     "ctrip": "携程",
@@ -29,7 +35,36 @@ DETECTED_META_KEYS = [
     "detected_channel_labels",
     "detected_channel_count",
     "detected_channel_title",
+    "detected_period_start",
+    "detected_period_end",
+    "detected_period_days",
 ]
+
+DATE_HEADER_KEYWORDS = (
+    "日期",
+    "营业日期",
+    "业务日期",
+    "数据日期",
+    "统计日期",
+    "快照日期",
+    "预订日期",
+    "订单日期",
+    "开始日期",
+    "结束日期",
+    "周期开始",
+    "周期结束",
+    "period_start",
+    "period_end",
+    "period_start_field",
+    "period_end_field",
+    "data_date",
+    "biz_date",
+    "business_date",
+    "stat_date",
+    "snapshot_date",
+    "booking_date",
+    "order_date",
+)
 
 
 def detect_channels_from_excel(file_path: str, max_rows: int = 30) -> list[str]:
@@ -74,6 +109,122 @@ def build_channel_summary(channels: list[str]) -> dict[str, Any]:
     }
 
 
+def _excel_serial_to_date(value: float) -> str | None:
+    if value < 20000 or value > 80000:
+        return None
+    return (date(1899, 12, 30) + timedelta(days=int(value))).isoformat()
+
+
+def _parse_date_value(value: Any) -> str | None:
+    if value in (None, ""):
+        return None
+    if isinstance(value, datetime):
+        return value.date().isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    if isinstance(value, (int, float)):
+        return _excel_serial_to_date(float(value))
+
+    text = str(value).strip()
+    if not text:
+        return None
+
+    # 2026-06-11 / 2026/06/11 / 2026.06.11
+    match = re.search(r"(20\d{2})[-/.年](\d{1,2})[-/.月](\d{1,2})", text)
+    if match:
+        year, month, day = (int(match.group(1)), int(match.group(2)), int(match.group(3)))
+        try:
+            return date(year, month, day).isoformat()
+        except ValueError:
+            return None
+
+    # Excel may display 6/11 or 06-11 without year; S14 test data is 2026.
+    match = re.fullmatch(r"(\d{1,2})[-/.月](\d{1,2})日?", text)
+    if match:
+        month, day = int(match.group(1)), int(match.group(2))
+        try:
+            return date(2026, month, day).isoformat()
+        except ValueError:
+            return None
+
+    if re.fullmatch(r"\d+(?:\.\d+)?", text):
+        return _excel_serial_to_date(float(text))
+
+    return None
+
+
+def detect_period_from_excel(file_path: str, max_rows: int = 2000) -> dict[str, Any]:
+    """Detect the real period from date columns or period cells in the workbook.
+
+    Priority is the workbook's own data dates. This prevents a control default
+    like 2026-06-01~2026-06-10 from being shown when the uploaded workbook only
+    contains 2026-06-11~2026-06-20 data.
+    """
+
+    path = Path(file_path).expanduser().resolve()
+    if load_workbook is None:
+        return {}
+
+    workbook = load_workbook(path, read_only=True, data_only=True)
+    detected_dates: list[str] = []
+
+    try:
+        for sheet_name in workbook.sheetnames:
+            ws = workbook[sheet_name]
+            rows = list(ws.iter_rows(max_row=max_rows, values_only=True))
+            if not rows:
+                continue
+
+            # Header table mode: only scan columns whose header looks like a date field.
+            header_row_index: int | None = None
+            date_col_indexes: set[int] = set()
+            for row_index, row in enumerate(rows[:80]):
+                for col_index, cell in enumerate(row):
+                    text = str(cell or "").strip()
+                    if any(keyword.lower() in text.lower() for keyword in DATE_HEADER_KEYWORDS):
+                        date_col_indexes.add(col_index)
+                        header_row_index = row_index if header_row_index is None else min(header_row_index, row_index)
+                if date_col_indexes and header_row_index is not None:
+                    break
+
+            if date_col_indexes and header_row_index is not None:
+                for row in rows[header_row_index + 1:]:
+                    for col_index in date_col_indexes:
+                        if col_index < len(row):
+                            parsed = _parse_date_value(row[col_index])
+                            if parsed:
+                                detected_dates.append(parsed)
+                continue
+
+            # Key-value/control sheet mode: scan cells near date labels.
+            for row in rows[:120]:
+                for col_index, cell in enumerate(row):
+                    text = str(cell or "").strip()
+                    if not text or not any(keyword.lower() in text.lower() for keyword in DATE_HEADER_KEYWORDS):
+                        continue
+                    for near_index in range(col_index, min(len(row), col_index + 4)):
+                        parsed = _parse_date_value(row[near_index])
+                        if parsed:
+                            detected_dates.append(parsed)
+    finally:
+        workbook.close()
+
+    unique_dates = sorted(set(detected_dates))
+    if not unique_dates:
+        return {}
+    start = unique_dates[0]
+    end = unique_dates[-1]
+    try:
+        days = (datetime.strptime(end, "%Y-%m-%d").date() - datetime.strptime(start, "%Y-%m-%d").date()).days + 1
+    except ValueError:
+        days = None
+    return {
+        "detected_period_start": start,
+        "detected_period_end": end,
+        "detected_period_days": days,
+    }
+
+
 def build_excel_inputs(file_path: str) -> dict[str, Any]:
     path = Path(file_path).expanduser().resolve()
 
@@ -82,25 +233,26 @@ def build_excel_inputs(file_path: str) -> dict[str, Any]:
 
     detected_channels = detect_channels_from_excel(str(path))
     detected_channel_summary = build_channel_summary(detected_channels)
+    detected_period = detect_period_from_excel(str(path))
+
+    period_start = detected_period.get("detected_period_start") or "2026-06-01"
+    period_end = detected_period.get("detected_period_end") or "2026-06-10"
 
     inputs = {
         "hotel_id": "puyue",
         "hotel_name": "贵阳璞悦·奢电竞酒店",
-
-        # 原有字段保持不变，避免影响之前功能
         "platform": "multi",
         "channel_source": "多渠道",
         "channel_mode": "multi",
-
-        "period_start": "2026-06-01",
-        "period_end": "2026-06-10",
+        "period_start": period_start,
+        "period_end": period_end,
         "data_source_mode": "excel_upload",
         "input_excel_path": str(path),
         "dry_run": True,
     }
 
-    # 只新增展示辅助字段，不覆盖原有字段
     inputs.update(detected_channel_summary)
+    inputs.update(detected_period)
 
     return inputs
 
@@ -133,7 +285,6 @@ def run_s14_from_excel(
 
     diagnosis_inputs = dict(inputs)
 
-    # 新增字段不传给 DiagnosisInput，避免 unexpected field
     detected_meta = {
         key: diagnosis_inputs.pop(key)
         for key in DETECTED_META_KEYS
@@ -142,8 +293,11 @@ def run_s14_from_excel(
 
     result = S14OperationDiagnosis(runtime_config).execute(diagnosis_inputs)
 
-    # 诊断结果如果是 dict，再把识别到的渠道信息补回去给页面/飞书使用
     if isinstance(result, dict):
         result.update(detected_meta)
+        if detected_meta.get("detected_period_start"):
+            result["period_start"] = detected_meta["detected_period_start"]
+        if detected_meta.get("detected_period_end"):
+            result["period_end"] = detected_meta["detected_period_end"]
 
     return result
