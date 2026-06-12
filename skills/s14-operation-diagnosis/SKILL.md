@@ -221,7 +221,7 @@ MySQL 生产：
 
 数据库模式缺少 `db_dsn` 时必须失败。Excel 上传模式缺少 `input_excel_path` 时必须失败。两种模式都不允许降级为手工字段或上游 Skill 输出。
 
-飞书生产测试必须配置 `report_output_dir` 和 `public_base_url`。Skill 只负责把 HTML 写入 `report_output_dir` 并返回报告 URL；入口层必须通过 `build_feishu_reply(result)` 重新渲染本次结果并追加本次 `run_id`，避免飞书或浏览器打开旧缓存。网页服务应由 Nginx 或 systemd 常驻托管。
+飞书生产测试必须配置 `report_output_dir` 和 `public_base_url`。Skill 只负责把 HTML 写入 `report_output_dir` 并返回报告 URL；入口层必须优先发送 `result["feishu_card"]`，或通过 `build_feishu_card_reply(result)` 重新渲染本次结果并追加本次 `run_id`，避免飞书或浏览器打开旧缓存。网页服务应由 Nginx 或 systemd 常驻托管。
 
 ## 数据库契约
 
@@ -399,7 +399,7 @@ ota_diagnosis_report_demo.html
 templates/ota_diagnosis_report_demo.template.html
 ```
 
-每次执行都会重新生成报告。飞书入口必须把本次 `report_url` 交给 `build_feishu_reply(result)` 渲染，禁止复用历史消息、旧 JSON、旧 `feishu_message` 或上一轮报告链接。
+每次执行都会重新生成报告。飞书入口必须优先发送本次结果的 `feishu_card`，或把本次 `report_url` 交给 `build_feishu_card_reply(result)` 渲染为交互卡片；禁止复用历史消息、旧 JSON、旧 `feishu_message` 或上一轮报告链接。
 
 ## 飞书接入边界
 
@@ -413,7 +413,7 @@ config/triggers.yaml
 
 ### 飞书输出格式：必须固定
 
-S14 飞书输出格式**必须固定**，由 `runtime/reply_formatter.py` 单一来源生成。任何 Agent、Bot、模板都不能自行拼接飞书文本。
+S14 飞书输出格式**必须固定**，由 `runtime/reply_formatter.py` 单一来源生成。任何 Agent、Bot、模板都不能自行拼接飞书文本或卡片正文。
 
 唯一允许的飞书输出链路（缺一不可）：
 
@@ -422,11 +422,11 @@ S14 飞书输出格式**必须固定**，由 `runtime/reply_formatter.py` 单一
    ↓
 2. Python 端用 json.loads(agent_output) 解析
    ↓
-3. 解析成功 → runtime/reply_formatter.py::format_agent_json_output()
-              → runtime/reply_formatter.py::format_feishu_message(data)
-              → 得到下面【飞书固定模板】文本
+3. 解析成功 → runtime/reply_formatter.py::format_agent_json_output_as_card()
+              → runtime/reply_formatter.py::build_feishu_interactive_card(data)
+              → 得到 Feishu interactive 卡片
    ↓
-4. Python 把固定模板文本 send_text(open_id, reply)
+4. Python 把交互卡片 send_interactive(open_id, reply)
    ↓
 5. 解析失败 / 缺字段 → 返回"诊断结果格式异常，请重新生成。"
 ```
@@ -437,25 +437,25 @@ S14 飞书输出格式**必须固定**，由 `runtime/reply_formatter.py` 单一
 - ❌ 禁止 Bot/入口服务自行拼接"飞猪诊断：xx/100"开头、模块列表、得分表格、风险描述等业务内容。
 - ❌ 禁止把 Agent 原文（如 deepseek 输出的 "飞猪诊断：68/100 中风险 | 仅上架 1 房型..."）作为飞书消息发送。
 - ❌ 禁止在 Feishu Bot 代码里再写一份 `format_feishu_message`、再写一份风险文案、再写一份模块表。
-- ❌ 禁止 Bot 修改综合得分、风险等级、报告链接、字段缺口，只允许原样转发 Python 拼好的文本。
+- ❌ 禁止 Bot 修改综合得分、风险等级、报告链接、字段缺口，只允许原样转发 Python 生成的 `feishu_card`。
 - ❌ 禁止发送“同份数据、无变化、第二轮数据”等历史会话总结；这些不是 S14 本次运行结果。
-- ❌ 禁止直接发送旧的 `result["feishu_message"]`；入口必须调用 `build_feishu_reply(result)` 丢弃旧消息并按本次 result 重新生成。
+- ❌ 禁止优先发送旧的 `result["feishu_message"]`；入口必须优先发送 `result["feishu_card"]` 或调用 `build_feishu_card_reply(result)`。
 
 飞书入口或 OpenClaw Agent 调用的**唯一正确示例**：
 
 ```python
-from runtime.feishu_adapter import build_feishu_reply_from_agent_output, build_feishu_reply
+from runtime.feishu_adapter import build_feishu_card_from_agent_output, build_feishu_card_reply
 from runtime import S14OperationDiagnosis
 
 # 方式 A：Agent 先输出 JSON，再交给 Python 固定排版
 agent_output = call_s14_agent(inputs)  # 必须是 JSON 字符串
-reply = build_feishu_reply_from_agent_output(agent_output)
-send_text(open_id, reply)
+reply = build_feishu_card_from_agent_output(agent_output)
+send_interactive(open_id, reply)
 
-# 方式 B：直接走 S14 Skill，让 Python 按本次 result 产出固定飞书文本
+# 方式 B：直接走 S14 Skill，让 Python 按本次 result 产出固定飞书卡片
 result = S14OperationDiagnosis(config).execute(inputs)
-reply = build_feishu_reply(result)  # 丢弃旧 feishu_message，用本次 result 重新渲染
-send_text(open_id, reply)
+reply = result["feishu_card"]  # 或 build_feishu_card_reply(result)
+send_interactive(open_id, reply)
 ```
 
 **禁止示例**（以下写法一律不允许）：
@@ -494,7 +494,7 @@ send_text(open_id, reply)
 - `period_start` / `period_end`：必须是 `YYYY-MM-DD`，来自 S14 入参。
 - `final_score`：必须是 0-100 的整数，由 S14 计算，Bot 不得改写。
 - `risk_text`：必须是 `高风险` / `中风险` / `低风险` 之一，由 `risk_label(score)` 计算。
-- `report_url`：必须是 S14 返回的报告链接，或由 `build_feishu_reply(result)` 统一追加本次 `run_id` 后的链接；Bot 不得自行改写、缩短、替换成旧链接。
+- `report_url`：必须是 S14 返回的报告链接，或由 `build_feishu_card_reply(result)` 统一追加本次 `run_id` 后的链接；Bot 不得自行改写、缩短、替换成旧链接。
 
 ### Agent JSON 契约（不可改）
 

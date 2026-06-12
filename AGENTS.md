@@ -28,6 +28,14 @@
 
 如果本次飞书消息带 `.xlsx` 或 `.xlsm` 附件，必须走 Excel 上传模式：
 
+```python
+from skills.s14_operation_diagnosis.runtime.feishu_adapter import handle_feishu_excel_card
+
+reply = handle_feishu_excel_card(downloaded_excel_path)
+```
+
+如果实际 import 路径因目录名带 `-` 不可直接导入，必须改用仓库提供的兼容脚本：
+
 ```bash
 python3 scripts/s14_feishu_entry.py --excel /path/to/uploaded.xlsx --format card
 ```
@@ -56,7 +64,9 @@ python3 scripts/s14_feishu_entry.py --text "执行S14诊断" --format card
 
 S14 诊断结果必须返回飞书卡片 JSON，不再返回旧的固定文本模板。
 
-输出必须是 `scripts/s14_feishu_entry.py --format card` 产生的 JSON，结构必须包含：
+最终飞书回复只能使用 `skills/s14-operation-diagnosis/runtime/feishu_adapter.py` 返回的结果。默认必须发送飞书 `interactive` 卡片，报告入口必须放在按钮 `url` 字段里。
+
+脚本 `--format card` 输出的是 webhook 风格 payload：
 
 ```json
 {
@@ -86,6 +96,15 @@ S14 诊断结果必须返回飞书卡片 JSON，不再返回旧的固定文本�
 }
 ```
 
+如果发送层使用飞书 OpenAPI `im/v1/messages`，不能把上面 JSON 或 URL 当普通文本发送，必须转成：
+
+```json
+{
+  "msg_type": "interactive",
+  "content": "{\"elements\":[...]}"
+}
+```
+
 卡片内展示：
 
 ```text
@@ -100,6 +119,8 @@ S14 诊断结果必须返回飞书卡片 JSON，不再返回旧的固定文本�
 ```text
 查看完整诊断报告
 ```
+
+只有在卡片发送失败或通道不支持卡片时，才允许使用 `--format text` 的兼容文本。
 
 ## 禁止行为
 

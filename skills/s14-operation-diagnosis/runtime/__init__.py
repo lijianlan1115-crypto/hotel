@@ -11,7 +11,7 @@ from typing import Any
 from .calculator import apply_cap_rules, calculate_all_modules
 from .data_fetcher import DataFetcher
 from .models import DiagnosisInput
-from .reply_formatter import format_feishu_message
+from .reply_formatter import build_feishu_interactive_card, format_feishu_message
 
 
 SKILL_ID = "s14-operation-diagnosis"
@@ -107,14 +107,16 @@ class S14OperationDiagnosis:
             "detail": "Rendered HTML report with templates/ota_diagnosis_report_demo.template.html.",
         })
         risk_level = "high" if final_score < 60 else "medium" if final_score < 80 else "low"
+        run_id = datetime.now().strftime("%Y%m%d%H%M%S")
         feishu_message = self._build_feishu_message(request, metrics, final_score, risk_level, report_url, data_source)
+        feishu_card = self._build_feishu_card(request, metrics, final_score, report_url)
         calculated_fields = self._calculated_fields()
         mapped_fields = self._mapped_fields()
 
         result = {
             "status": "partial" if caps else "ok",
             "skill_id": SKILL_ID,
-            "run_id": datetime.now().strftime("%Y%m%d%H%M%S"),
+            "run_id": run_id,
             "hotel_id": request.hotel_id,
             "hotel_name": request.hotel_name or metrics.get("hotel_name"),
             "platform": request.platform,
@@ -137,6 +139,7 @@ class S14OperationDiagnosis:
             "field_contract_file": "references/excel_field_mapping.xlsx",
             "field_mapping_source": "config/excel_field_mapping.yaml",
             "feishu_message": feishu_message,
+            "feishu_card": feishu_card,
             "approval_required": True,
             "dry_run": request.dry_run,
             "report_file_path": report_file_path,
@@ -193,6 +196,18 @@ class S14OperationDiagnosis:
     def _build_feishu_message(self, request: DiagnosisInput, metrics: dict[str, Any], final_score: float, risk_level: str, report_url: str, data_source: str) -> str:
         hotel_name = request.hotel_name or metrics.get("hotel_name") or request.hotel_id
         return format_feishu_message(
+            {
+                "hotel_name": hotel_name,
+                "period_start": str(request.period_start),
+                "period_end": str(request.period_end),
+                "final_score": final_score,
+                "report_url": report_url,
+            }
+        )
+
+    def _build_feishu_card(self, request: DiagnosisInput, metrics: dict[str, Any], final_score: float, report_url: str) -> dict[str, Any]:
+        hotel_name = request.hotel_name or metrics.get("hotel_name") or request.hotel_id
+        return build_feishu_interactive_card(
             {
                 "hotel_name": hotel_name,
                 "period_start": str(request.period_start),
@@ -305,6 +320,9 @@ class S14OperationDiagnosis:
             raise ValueError("S14 mapped_fields must cover all calculated/control fields")
         if not result.get("feishu_message") or "【S14 酒店 OTA 诊断报告已生成】" not in result["feishu_message"]:
             raise ValueError("S14 feishu_message format is missing or invalid")
+        feishu_card = result.get("feishu_card")
+        if not isinstance(feishu_card, dict) or feishu_card.get("msg_type") != "interactive":
+            raise ValueError("S14 feishu_card must be an interactive card")
         if not result.get("report_url"):
             raise ValueError("S14 report_url is required")
         if result.get("dry_run") is not True or result.get("approval_required") is not True:

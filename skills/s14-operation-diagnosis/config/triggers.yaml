@@ -68,7 +68,11 @@ input_extraction:
     days: 10
 
 reply_policy:
-  use_adapter_method: build_feishu_reply
+  use_adapter_method: build_feishu_card_reply
+  fallback_adapter_method: build_feishu_reply
+  reply_field: feishu_card
+  fallback_reply_field: feishu_message
+  msg_type: interactive
   bot_must_not_format_business_result: true
   force_fresh_run: true
   forbid_cached_agent_text: true
@@ -79,4 +83,4 @@ reply_policy:
     - module_scores
     - caps
     - missing_fields
-  note: "The entry service must call build_feishu_reply(result), discard cached text and old feishu_message, then send the returned fixed text."
+  note: "The entry service must call build_feishu_card_reply(result) or send result.feishu_card first. Do not send result.feishu_message unless interactive cards are unavailable."

@@ -16,10 +16,12 @@ schemas:
 triggers:
   file: config/triggers.yaml
   routing_doc: references/feishu_routing.md
-  reply_field: feishu_message
+  reply_field: feishu_card
+  fallback_reply_field: feishu_message
+  reply_msg_type: interactive
   entry_service_must_not_format_business_result: true
   agent_output_policy: "Agent 只能输出合法 JSON 对象，不得输出 Markdown、表格、解释文字或自然语言总结。"
-  reply_policy: "Python 必须丢弃历史消息/旧 JSON/预拼 feishu_message，基于本次运行 result 调用 runtime/reply_formatter.py 生成固定飞书文本；JSON 不合法时返回：诊断结果格式异常，请重新生成。"
+  reply_policy: "Python 必须丢弃历史消息/旧 JSON/预拼 feishu_message，基于本次运行 result 生成 feishu_card 交互卡片；发送层必须优先发送 feishu_card，只有卡片通道不可用时才 fallback 到 feishu_message。"
   force_fresh_run: true
   forbid_memory_result: true
   forbid_previous_message_reuse: true

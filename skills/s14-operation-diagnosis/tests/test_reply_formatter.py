@@ -24,13 +24,16 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from runtime.feishu_adapter import (  # noqa: E402
+    build_feishu_card_reply,
     build_feishu_reply,
     build_feishu_reply_from_agent_output,
 )
 from runtime.reply_formatter import (  # noqa: E402
     FEISHU_TEMPLATE,
     FORMAT_ERROR_TEXT,
+    assert_strict_feishu_card,
     assert_strict_feishu_format,
+    format_agent_json_output_as_card,
     format_agent_json_output,
     format_feishu_message,
     risk_label,
@@ -200,6 +203,31 @@ def test_build_feishu_reply_ignores_skill_message_field() -> None:
     assert "run_id=" in rendered
 
 
+def test_build_feishu_card_reply_contains_clickable_button_link() -> None:
+    """卡片回复必须是飞书 interactive，并把 URL 放进按钮。"""
+
+    card = build_feishu_card_reply(dict(VALID_PAYLOAD))
+    assert isinstance(card, dict), f"卡片输出必须是 dict，实际: {card!r}"
+    assert_strict_feishu_card(card)
+    assert card["msg_type"] == "interactive"
+
+    elements = card["card"]["elements"]
+    content = elements[0]["text"]["content"]
+    button = elements[1]["actions"][0]
+    assert card["card"]["elements"][0]["text"]["tag"] == "lark_md"
+    assert button["tag"] == "button"
+    assert button["text"]["content"] == "查看完整诊断报告"
+    assert "run_id=" in button["url"]
+    assert "报告链接：\nhttp" not in content
+
+
+def test_agent_json_card_output_is_interactive_payload() -> None:
+    rendered = format_agent_json_output_as_card(json.dumps(VALID_PAYLOAD))
+    payload = json.loads(rendered)
+    assert_strict_feishu_card(payload)
+    assert payload["msg_type"] == "interactive"
+
+
 def test_build_feishu_reply_handles_invalid_payload() -> None:
     """字段缺失时必须返回 FORMAT_ERROR_TEXT，不抛异常。"""
 
@@ -221,6 +249,8 @@ def main() -> None:
         test_invalid_score_range,
         test_strict_format_rejects_freeform,
         test_build_feishu_reply_ignores_skill_message_field,
+        test_build_feishu_card_reply_contains_clickable_button_link,
+        test_agent_json_card_output_is_interactive_payload,
         test_build_feishu_reply_handles_invalid_payload,
     ]
     failed = 0
