@@ -6,17 +6,18 @@ This is the only script OpenClaw should call for S14 Feishu replies.
 Routing:
 - ``--excel /path/to/file.xlsx``: use the uploaded Excel as the data source.
 - ``--text "执行S14诊断"``: use database mode.
-
-The script prints the locked Feishu message only. It must not print JSON,
-debug text, module tables, or old report links.
+- ``--format card``: print Feishu interactive card JSON with clickable link.
+- ``--format text``: print the legacy fixed text message.
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 from pathlib import Path
+from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -35,10 +36,27 @@ def _load_env_file() -> None:
         os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
 
 
+def _print_reply(reply: Any, error_text: str) -> int:
+    if not reply:
+        print(error_text)
+        return 2
+    if isinstance(reply, (dict, list)):
+        print(json.dumps(reply, ensure_ascii=False))
+    else:
+        print(reply)
+    return 0
+
+
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run S14 Feishu fixed reply entry")
+    parser = argparse.ArgumentParser(description="Run S14 Feishu reply entry")
     parser.add_argument("--text", default="", help="Feishu text message")
     parser.add_argument("--excel", default="", help="Downloaded Feishu Excel path")
+    parser.add_argument(
+        "--format",
+        choices=("text", "card"),
+        default=os.environ.get("S14_FEISHU_REPLY_FORMAT", "card"),
+        help="Output format. card prints Feishu interactive card JSON.",
+    )
     args = parser.parse_args()
 
     _load_env_file()
@@ -47,24 +65,24 @@ def main() -> int:
     from runtime.feishu_adapter import (  # noqa: WPS433
         FORMAT_ERROR_TEXT,
         handle_feishu_excel,
+        handle_feishu_excel_card,
         handle_feishu_text_message,
+        handle_feishu_text_message_card,
     )
 
     if args.excel:
-        reply = handle_feishu_excel(args.excel)
+        reply = handle_feishu_excel_card(args.excel) if args.format == "card" else handle_feishu_excel(args.excel)
     elif args.text:
-        reply = handle_feishu_text_message(args.text) or ""
+        reply = (
+            handle_feishu_text_message_card(args.text)
+            if args.format == "card"
+            else handle_feishu_text_message(args.text)
+        ) or ""
     else:
         reply = ""
 
-    if reply:
-        print(reply)
-    else:
-        print(FORMAT_ERROR_TEXT)
-        return 2
-    return 0
+    return _print_reply(reply, FORMAT_ERROR_TEXT)
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
