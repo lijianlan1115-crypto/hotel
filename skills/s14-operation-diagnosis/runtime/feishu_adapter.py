@@ -7,6 +7,7 @@ after receiving a message event.
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 from datetime import date, datetime, timedelta
@@ -18,8 +19,11 @@ try:
     from .router import should_route_to_s14
     from .reply_formatter import (
         FORMAT_ERROR_TEXT,
+        assert_strict_feishu_card,
         assert_strict_feishu_format,
+        build_feishu_interactive_card,
         format_agent_json_output,
+        format_agent_json_output_as_card,
         format_feishu_message,
     )
     from .excel_reader import run_s14_from_excel
@@ -27,8 +31,11 @@ except ImportError:
     from router import should_route_to_s14
     from reply_formatter import (
         FORMAT_ERROR_TEXT,
+        assert_strict_feishu_card,
         assert_strict_feishu_format,
+        build_feishu_interactive_card,
         format_agent_json_output,
+        format_agent_json_output_as_card,
         format_feishu_message,
     )
     from excel_reader import run_s14_from_excel
@@ -50,6 +57,8 @@ S14_PUBLIC_BASE_URL = os.environ.get(
     "S14_PUBLIC_BASE_URL",
     "http://47.108.200.194:8088/s14-reports",
 )
+
+
 def _select_platform_from_text(text: str) -> tuple[str, str]:
     current = str(text or "")
     if "美团" in current:
@@ -61,6 +70,7 @@ def _select_platform_from_text(text: str) -> tuple[str, str]:
     if "多渠道" in current or "全渠道" in current:
         return "all", "多渠道"
     return "fliggy", "飞猪"
+
 
 def _new_run_id() -> str:
     return datetime.now().strftime("%Y%m%d%H%M%S")
@@ -133,7 +143,7 @@ def run_s14_local_table_mode(text: str = "") -> dict[str, Any]:
 
 
 def build_feishu_reply(result: dict[str, Any]) -> str:
-    """Build the locked S14 Feishu reply from the current Skill result."""
+    """Build the locked S14 text reply from the current Skill result."""
 
     try:
         rendered = format_feishu_message(_prepare_current_result(result))
@@ -146,6 +156,26 @@ def build_feishu_reply(result: dict[str, Any]) -> str:
         return FORMAT_ERROR_TEXT
 
     return rendered
+
+
+def build_feishu_card_reply(result: dict[str, Any]) -> dict[str, Any] | str:
+    """Build an interactive Feishu card with a clickable report link."""
+
+    try:
+        card = build_feishu_interactive_card(_prepare_current_result(result))
+        assert_strict_feishu_card(card)
+        return card
+    except Exception:
+        return FORMAT_ERROR_TEXT
+
+
+def build_feishu_card_reply_json(result: dict[str, Any]) -> str:
+    """Build an interactive Feishu card and return it as JSON text."""
+
+    card = build_feishu_card_reply(result)
+    if isinstance(card, str):
+        return card
+    return json.dumps(card, ensure_ascii=False)
 
 
 def build_feishu_reply_from_agent_output(agent_output: str) -> str:
@@ -161,13 +191,14 @@ def build_feishu_reply_from_agent_output(agent_output: str) -> str:
     return rendered
 
 
-def handle_feishu_text_message(text: str) -> str | None:
-    """Text trigger always runs a fresh database diagnosis.
+def build_feishu_card_from_agent_output(agent_output: str) -> str:
+    """Use when an Agent first produces JSON, then Python renders Feishu card JSON."""
 
-    Never answer from previous Feishu messages, Agent memory, old JSON, or a
-    prebuilt ``feishu_message``. The only outbound message is the current run's
-    locked template rendered by ``build_feishu_reply``.
-    """
+    return format_agent_json_output_as_card(agent_output)
+
+
+def handle_feishu_text_message(text: str) -> str | None:
+    """Text trigger always runs a fresh database diagnosis and returns text."""
 
     if not should_route_to_s14(text):
         return None
@@ -177,6 +208,20 @@ def handle_feishu_text_message(text: str) -> str | None:
         return build_feishu_reply(result)
     except Exception:
         return FORMAT_ERROR_TEXT
+
+
+def handle_feishu_text_message_card(text: str) -> dict[str, Any] | str | None:
+    """Text trigger always runs a fresh database diagnosis and returns a card."""
+
+    if not should_route_to_s14(text):
+        return None
+
+    try:
+        result = run_s14_local_table_mode(text)
+        return build_feishu_card_reply(result)
+    except Exception:
+        return FORMAT_ERROR_TEXT
+
 
 def handle_feishu_excel(file_path: str) -> str:
     """Excel upload always runs the uploaded workbook and returns fixed text."""
@@ -190,6 +235,23 @@ def handle_feishu_excel(file_path: str) -> str:
             },
         )
         return build_feishu_reply(result)
+
+    except Exception:
+        return FORMAT_ERROR_TEXT
+
+
+def handle_feishu_excel_card(file_path: str) -> dict[str, Any] | str:
+    """Excel upload always runs the uploaded workbook and returns a card."""
+
+    try:
+        result = run_s14_from_excel(
+            file_path,
+            {
+                "report_output_dir": S14_REPORT_OUTPUT_DIR,
+                "public_base_url": S14_PUBLIC_BASE_URL,
+            },
+        )
+        return build_feishu_card_reply(result)
 
     except Exception:
         return FORMAT_ERROR_TEXT
