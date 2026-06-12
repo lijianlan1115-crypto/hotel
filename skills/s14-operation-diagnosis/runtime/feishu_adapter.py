@@ -41,6 +41,7 @@ S14_PUBLIC_BASE_URL = os.environ.get(
     "S14_PUBLIC_BASE_URL",
     "http://47.108.200.194:8088/s14-reports",
 )
+S14_REPORT_RETENTION_DAYS = int(os.environ.get("S14_REPORT_RETENTION_DAYS", "30"))
 
 MODULE_LABELS = {
     "M01": "经营收益",
@@ -80,10 +81,71 @@ def _append_run_id(report_url: str, run_id: str) -> str:
     return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
 
 
+def _replace_report_url_filename(report_url: str, filename: str) -> str:
+    if not report_url:
+        return report_url
+    parts = urlsplit(str(report_url))
+    path_parts = parts.path.rsplit("/", 1)
+    if len(path_parts) == 2:
+        new_path = f"{path_parts[0]}/{filename}"
+    else:
+        new_path = filename
+    return urlunsplit((parts.scheme, parts.netloc, new_path, "", parts.fragment))
+
+
+def _cleanup_old_reports(report_dir: Path, retention_days: int = S14_REPORT_RETENTION_DAYS) -> None:
+    """Delete archived S14 HTML reports older than the retention window."""
+
+    if retention_days <= 0 or not report_dir.exists():
+        return
+    cutoff = datetime.now().timestamp() - retention_days * 86400
+    for path in report_dir.glob("ota_diagnosis_report_*.html"):
+        try:
+            if path.is_file() and path.stat().st_mtime < cutoff:
+                path.unlink()
+        except OSError:
+            continue
+
+
+def _freeze_report_file(prepared: dict[str, Any], run_id: str) -> None:
+    """Copy the latest fixed report to a unique file so old Feishu links keep working.
+
+    The core report renderer may still write ``ota_diagnosis_report.html`` for
+    compatibility. Before replying to Feishu, this adapter snapshots that file
+    to ``ota_diagnosis_report_<run_id>.html`` and rewrites ``report_url``.
+    """
+
+    report_path_text = str(prepared.get("report_file_path") or "").strip()
+    if not report_path_text:
+        return
+
+    source_path = Path(report_path_text)
+    if not source_path.exists() or not source_path.is_file():
+        return
+
+    report_dir = source_path.parent
+    safe_run_id = "".join(ch for ch in str(run_id) if ch.isdigit()) or _new_run_id()
+    unique_name = f"ota_diagnosis_report_{safe_run_id}.html"
+    unique_path = report_dir / unique_name
+
+    try:
+        if source_path.resolve() != unique_path.resolve():
+            unique_path.write_bytes(source_path.read_bytes())
+        prepared["report_file_path"] = str(unique_path)
+        if prepared.get("report_url"):
+            prepared["report_url"] = _replace_report_url_filename(str(prepared["report_url"]), unique_name)
+        elif S14_PUBLIC_BASE_URL:
+            prepared["report_url"] = f"{S14_PUBLIC_BASE_URL.rstrip('/')}/{unique_name}"
+        _cleanup_old_reports(report_dir)
+    except OSError:
+        return
+
+
 def _prepare_current_result(result: dict[str, Any]) -> dict[str, Any]:
     prepared = dict(result or {})
     run_id = str(prepared.get("run_id") or _new_run_id())
     prepared["run_id"] = run_id
+    _freeze_report_file(prepared, run_id)
     if prepared.get("report_url"):
         prepared["report_url"] = _append_run_id(prepared["report_url"], run_id)
     prepared.pop("feishu_message", None)
@@ -133,7 +195,6 @@ def _module_line(index: int, item: dict[str, Any]) -> str:
 
 def _rich_markdown_reply(result: dict[str, Any]) -> str:
     data = _prepare_current_result(result)
-    hotel = str(data.get("hotel_name") or data.get("hotel_id") or "酒店")
     platform = _platform_text(data.get("platform") or data.get("channel_source"))
     score = float(data.get("final_score") or 0)
     risk = _risk_text(score)
