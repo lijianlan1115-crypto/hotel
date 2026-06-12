@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
 """S14 Feishu entry wrapper.
 
-This is the only script OpenClaw should call for S14 Feishu replies.
-
 Routing:
 - ``--excel /path/to/file.xlsx``: use the uploaded Excel as the data source.
-- ``--text "执行S14诊断"``: use database mode.
-- ``--format card``: print Feishu interactive card JSON with clickable link.
-- ``--format text``: print the legacy fixed text message.
+- ``--text "执行S14诊断"``: use database mode when S14 is triggered.
+- ``--format card``: print Feishu interactive card JSON with clickable button.
+- Non-S14 text gets a normal text reply instead of the S14 error template.
 """
 
 from __future__ import annotations
@@ -16,6 +14,7 @@ import argparse
 import json
 import os
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -45,6 +44,16 @@ def _print_reply(reply: Any, error_text: str) -> int:
     else:
         print(reply)
     return 0
+
+
+def _normal_reply(text: str) -> str:
+    current = str(text or "").strip()
+    now = datetime.now()
+    if any(word in current for word in ("今天", "日期", "几号", "几月几日")):
+        return f"今天是 {now:%Y-%m-%d}。"
+    if any(word in current for word in ("几点", "时间", "现在时间")):
+        return f"现在时间是 {now:%Y-%m-%d %H:%M:%S}。"
+    return "收到。普通问题可以正常回复；需要生成 S14 OTA 诊断报告时，请发送“S14诊断”或上传诊断 Excel。"
 
 
 def main() -> int:
@@ -77,7 +86,9 @@ def main() -> int:
             handle_feishu_text_message_card(args.text)
             if args.format == "card"
             else handle_feishu_text_message(args.text)
-        ) or ""
+        )
+        if reply is None:
+            reply = _normal_reply(args.text)
     else:
         reply = ""
 
