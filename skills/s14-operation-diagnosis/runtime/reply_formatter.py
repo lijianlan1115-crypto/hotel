@@ -2,8 +2,8 @@
 
 The Agent may produce diagnostic JSON, but it must not produce the final
 Feishu text. This module is the single source of truth for the S14 Feishu
-reply. The template is locked here and exported as ``FEISHU_TEMPLATE`` so
-that tests and the entry service can assert the exact byte-for-byte format.
+reply. The text template remains locked for compatibility, and the card
+formatter builds a Feishu interactive card with a clickable report link.
 """
 
 from __future__ import annotations
@@ -23,9 +23,7 @@ REQUIRED_FIELDS = (
     "report_url",
 )
 
-# 飞书固定模板：一字不能多、一字不能少。Bot/Agent 禁止改写。
-# 字段顺序：title / blank / hotel / period / score / risk / blank / link label /
-#           url / blank / footer。
+# 飞书固定文本模板：保留给命令行测试和不支持卡片的通道。
 FEISHU_TEMPLATE = (
     "【S14 酒店 OTA 诊断报告已生成】\n"
     "\n"
@@ -117,7 +115,7 @@ def _validate_data(data: Any) -> dict[str, Any]:
 
 
 def format_feishu_message(data: dict[str, Any]) -> str:
-    """Render the locked S14 Feishu template. Raises on invalid input."""
+    """Render the locked S14 text template. Raises on invalid input."""
 
     normalized = _validate_data(data)
     return FEISHU_TEMPLATE.format(
@@ -130,8 +128,56 @@ def format_feishu_message(data: dict[str, Any]) -> str:
     )
 
 
+def build_feishu_interactive_card(data: dict[str, Any]) -> dict[str, Any]:
+    """Build a Feishu interactive card payload with a clickable report link.
+
+    The key point is that the report URL is rendered inside ``lark_md`` using
+    ``[点击查看诊断报告](url)``. Do not put the URL inside ``plain_text``.
+    """
+
+    normalized = _validate_data(data)
+    score_text = f"{normalized['final_score']:.0f} / 100"
+    report_url = normalized["report_url"]
+    content = (
+        f"**酒店：** {normalized['hotel_name']}\n"
+        f"**周期：** {normalized['period_start']} 至 {normalized['period_end']}\n"
+        f"**综合得分：** {score_text}\n"
+        f"**风险等级：** {normalized['risk_text']}\n\n"
+        f"🔗 [点击查看诊断报告]({report_url})\n\n"
+        "说明：当前为 S14 测试机器人返回结果，不影响正式酒店 OTA Agent。"
+    )
+    return {
+        "msg_type": "interactive",
+        "card": {
+            "config": {"wide_screen_mode": True},
+            "header": {
+                "template": "blue",
+                "title": {
+                    "tag": "plain_text",
+                    "content": "S14 酒店 OTA 诊断报告已生成",
+                },
+            },
+            "elements": [
+                {
+                    "tag": "div",
+                    "text": {
+                        "tag": "lark_md",
+                        "content": content,
+                    },
+                },
+            ],
+        },
+    }
+
+
+def format_feishu_card_json(data: dict[str, Any]) -> str:
+    """Render the Feishu interactive card payload as compact JSON text."""
+
+    return json.dumps(build_feishu_interactive_card(data), ensure_ascii=False)
+
+
 def format_agent_json_output(agent_output: str) -> str:
-    """Parse Agent output as JSON and return the fixed Feishu message.
+    """Parse Agent output as JSON and return the fixed Feishu text.
 
     If the Agent returns prose, markdown, malformed JSON, or JSON missing
     required fields, do not try to repair it. Return a stable error message.
@@ -155,8 +201,26 @@ def format_agent_json_output(agent_output: str) -> str:
         return FORMAT_ERROR_TEXT
 
 
+def format_agent_json_output_as_card(agent_output: str) -> str:
+    """Parse Agent JSON and return a Feishu interactive card JSON string."""
+
+    if not isinstance(agent_output, str):
+        return FORMAT_ERROR_TEXT
+    stripped = agent_output.strip()
+    if not stripped or stripped.startswith("```") or stripped.startswith("#"):
+        return FORMAT_ERROR_TEXT
+    try:
+        data = json.loads(stripped)
+    except (ValueError, TypeError):
+        return FORMAT_ERROR_TEXT
+    try:
+        return format_feishu_card_json(data)
+    except (ValueError, TypeError):
+        return FORMAT_ERROR_TEXT
+
+
 def assert_strict_feishu_format(text: str) -> None:
-    """Validate that ``text`` exactly matches the S14 fixed template."""
+    """Validate that ``text`` exactly matches the S14 fixed text template."""
 
     expected = format_feishu_message(_expected_payload_from_text(text))
     if text != expected:
@@ -164,6 +228,27 @@ def assert_strict_feishu_format(text: str) -> None:
             "S14 Feishu text does not match the locked template. "
             "Refusing to send non-conforming text to Feishu."
         )
+
+
+def assert_strict_feishu_card(payload: dict[str, Any]) -> None:
+    """Validate that ``payload`` is an S14 interactive card with lark_md link."""
+
+    if not isinstance(payload, dict):
+        raise ValueError("S14 Feishu card must be a dict")
+    if payload.get("msg_type") != "interactive":
+        raise ValueError("S14 Feishu card msg_type must be interactive")
+    card = payload.get("card")
+    if not isinstance(card, dict):
+        raise ValueError("S14 Feishu card missing card body")
+    elements = card.get("elements")
+    if not isinstance(elements, list) or not elements:
+        raise ValueError("S14 Feishu card missing elements")
+    text = elements[0].get("text") if isinstance(elements[0], dict) else None
+    if not isinstance(text, dict) or text.get("tag") != "lark_md":
+        raise ValueError("S14 Feishu card link must be rendered by lark_md")
+    content = str(text.get("content") or "")
+    if "[点击查看诊断报告](" not in content:
+        raise ValueError("S14 Feishu card must contain a markdown report link")
 
 
 def _expected_payload_from_text(text: str) -> dict[str, Any]:
