@@ -1,9 +1,8 @@
 """Strict JSON-to-Feishu formatter for S14.
 
 The Agent may produce diagnostic JSON, but it must not produce the final
-Feishu text. This module is the single source of truth for the S14 Feishu
-reply. The text template remains locked for compatibility, and the card
-formatter builds a Feishu interactive card with a clickable report link.
+Feishu diagnostic card. This module is the single source of truth for the S14
+Feishu card. Non-S14 chat should not be constrained by this formatter.
 """
 
 from __future__ import annotations
@@ -23,7 +22,7 @@ REQUIRED_FIELDS = (
     "report_url",
 )
 
-# 飞书固定文本模板：保留给命令行测试和不支持卡片的通道。
+# 旧文本模板：只保留给命令行调试和不支持卡片的通道。
 FEISHU_TEMPLATE = (
     "【S14 酒店 OTA 诊断报告已生成】\n"
     "\n"
@@ -115,7 +114,7 @@ def _validate_data(data: Any) -> dict[str, Any]:
 
 
 def format_feishu_message(data: dict[str, Any]) -> str:
-    """Render the locked S14 text template. Raises on invalid input."""
+    """Render the legacy S14 text template. Raises on invalid input."""
 
     normalized = _validate_data(data)
     return FEISHU_TEMPLATE.format(
@@ -129,10 +128,10 @@ def format_feishu_message(data: dict[str, Any]) -> str:
 
 
 def build_feishu_interactive_card(data: dict[str, Any]) -> dict[str, Any]:
-    """Build a Feishu interactive card payload with a clickable report link.
+    """Build a Feishu interactive card with a real button link.
 
-    The key point is that the report URL is rendered inside ``lark_md`` using
-    ``[点击查看诊断报告](url)``. Do not put the URL inside ``plain_text``.
+    The report URL is placed on the card button ``url`` field, not inside
+    ``plain_text``. This makes Feishu show a clickable card button.
     """
 
     normalized = _validate_data(data)
@@ -143,7 +142,7 @@ def build_feishu_interactive_card(data: dict[str, Any]) -> dict[str, Any]:
         f"**周期：** {normalized['period_start']} 至 {normalized['period_end']}\n"
         f"**综合得分：** {score_text}\n"
         f"**风险等级：** {normalized['risk_text']}\n\n"
-        f"🔗 [点击查看诊断报告]({report_url})\n\n"
+        "点击下方按钮查看完整网页诊断报告。\n\n"
         "说明：当前为 S14 测试机器人返回结果，不影响正式酒店 OTA Agent。"
     )
     return {
@@ -165,6 +164,20 @@ def build_feishu_interactive_card(data: dict[str, Any]) -> dict[str, Any]:
                         "content": content,
                     },
                 },
+                {
+                    "tag": "action",
+                    "actions": [
+                        {
+                            "tag": "button",
+                            "text": {
+                                "tag": "plain_text",
+                                "content": "查看完整诊断报告",
+                            },
+                            "type": "primary",
+                            "url": report_url,
+                        }
+                    ],
+                },
             ],
         },
     }
@@ -177,18 +190,13 @@ def format_feishu_card_json(data: dict[str, Any]) -> str:
 
 
 def format_agent_json_output(agent_output: str) -> str:
-    """Parse Agent output as JSON and return the fixed Feishu text.
-
-    If the Agent returns prose, markdown, malformed JSON, or JSON missing
-    required fields, do not try to repair it. Return a stable error message.
-    """
+    """Parse Agent output as JSON and return the legacy Feishu text."""
 
     if not isinstance(agent_output, str):
         return FORMAT_ERROR_TEXT
     stripped = agent_output.strip()
     if not stripped:
         return FORMAT_ERROR_TEXT
-    # 显式拒绝 Markdown / 代码块 / 自然语言
     if stripped.startswith("```") or stripped.startswith("#"):
         return FORMAT_ERROR_TEXT
     try:
@@ -220,7 +228,7 @@ def format_agent_json_output_as_card(agent_output: str) -> str:
 
 
 def assert_strict_feishu_format(text: str) -> None:
-    """Validate that ``text`` exactly matches the S14 fixed text template."""
+    """Validate that ``text`` exactly matches the legacy S14 text template."""
 
     expected = format_feishu_message(_expected_payload_from_text(text))
     if text != expected:
@@ -231,7 +239,7 @@ def assert_strict_feishu_format(text: str) -> None:
 
 
 def assert_strict_feishu_card(payload: dict[str, Any]) -> None:
-    """Validate that ``payload`` is an S14 interactive card with lark_md link."""
+    """Validate that ``payload`` is an S14 interactive card with a button URL."""
 
     if not isinstance(payload, dict):
         raise ValueError("S14 Feishu card must be a dict")
@@ -241,14 +249,22 @@ def assert_strict_feishu_card(payload: dict[str, Any]) -> None:
     if not isinstance(card, dict):
         raise ValueError("S14 Feishu card missing card body")
     elements = card.get("elements")
-    if not isinstance(elements, list) or not elements:
+    if not isinstance(elements, list) or len(elements) < 2:
         raise ValueError("S14 Feishu card missing elements")
-    text = elements[0].get("text") if isinstance(elements[0], dict) else None
-    if not isinstance(text, dict) or text.get("tag") != "lark_md":
-        raise ValueError("S14 Feishu card link must be rendered by lark_md")
-    content = str(text.get("content") or "")
-    if "[点击查看诊断报告](" not in content:
-        raise ValueError("S14 Feishu card must contain a markdown report link")
+    first_text = elements[0].get("text") if isinstance(elements[0], dict) else None
+    if not isinstance(first_text, dict) or first_text.get("tag") != "lark_md":
+        raise ValueError("S14 Feishu card body must be rendered by lark_md")
+    action = elements[1]
+    if not isinstance(action, dict) or action.get("tag") != "action":
+        raise ValueError("S14 Feishu card must contain an action block")
+    actions = action.get("actions")
+    if not isinstance(actions, list) or not actions:
+        raise ValueError("S14 Feishu card action block missing button")
+    button = actions[0]
+    if not isinstance(button, dict) or button.get("tag") != "button":
+        raise ValueError("S14 Feishu card action must be a button")
+    if not str(button.get("url") or "").startswith(("http://", "https://")):
+        raise ValueError("S14 Feishu card button must contain a report URL")
 
 
 def _expected_payload_from_text(text: str) -> dict[str, Any]:
@@ -271,7 +287,6 @@ def _expected_payload_from_text(text: str) -> dict[str, Any]:
             match = re.match(r"^综合得分：(\d+) / 100$", line)
             if match:
                 payload["final_score"] = int(match.group(1))
-    # 报告链接的位置是固定的："报告链接：" 行的下一行。
     for i, line in enumerate(lines):
         if line == "报告链接：":
             if i + 1 < len(lines):
