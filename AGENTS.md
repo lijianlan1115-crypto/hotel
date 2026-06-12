@@ -14,7 +14,7 @@
 
 收到消息后先判断是否属于 S14/OTA 诊断。
 
-- S14/OTA 诊断请求：运行 S14 入口，返回富文本 Markdown 风格诊断结果。
+- S14/OTA 诊断请求：只运行 S14 入口，并且只发送脚本 stdout 原文。
 - 普通消息：正常简短回复，不运行 S14。
 
 不要使用历史聊天、旧 JSON、旧报告文件或旧 `public/s14-reports/s14_result.json` 生成本次诊断结果。
@@ -47,6 +47,15 @@ python3 scripts/s14_feishu_entry.py --text "执行S14诊断" --format text
 
 S14 诊断回复使用富文本 Markdown 风格，不再使用旧的固定五行模板。
 
+重要：诊断回复必须严格等于 `scripts/s14_feishu_entry.py` 的 stdout 原文。
+
+- 不要复述 stdout。
+- 不要把 stdout 再总结一遍。
+- 不要把 stdout 拼接两次。
+- 不要在 stdout 前后追加解释。
+- 不要把 stdout 的代码块、表格、链接再次复制一遍。
+- 一次飞书触发只能发送一条 S14 诊断消息。
+
 期望风格：
 
 ```text
@@ -69,7 +78,7 @@ S14 诊断回复使用富文本 Markdown 风格，不再使用旧的固定五行
 |---|---|---|
 | ... | ... | ... |
 
-📊 http://47.108.200.194:8088/s14-reports/ota_diagnosis_report.html?run_id=...
+📊 http://47.108.200.194:8088/s14-reports/ota_diagnosis_report_20260612110947.html?run_id=20260612110947
 ```
 
 ## 注意事项
@@ -77,13 +86,14 @@ S14 诊断回复使用富文本 Markdown 风格，不再使用旧的固定五行
 - 不要把 S14 诊断结果改回旧固定模板。
 - 不要只回复酒店、周期、分数、风险、链接五行。
 - 不要在外层追加“诊断完成，返回结果：”。
+- 不要重复输出同一段 S14 诊断内容。
 - 每次触发都重新运行，生成新的 `run_id` 链接。
 
 ## 数据源判定
 
 | 本次消息形态 | 数据源 | 入口 | 输出 |
 |---|---|---|---|
-| 纯文字 `执行S14诊断` | 数据库 | `scripts/s14_feishu_entry.py --text ... --format text` | 富文本诊断结果 + run_id 链接 |
-| 飞书上传 Excel | 本次上传 Excel | `scripts/s14_feishu_entry.py --excel ... --format text` | 富文本诊断结果 + run_id 链接 |
-| 文字 + Excel | Excel 优先 | `scripts/s14_feishu_entry.py --excel ... --format text` | 富文本诊断结果 + run_id 链接 |
+| 纯文字 `执行S14诊断` | 数据库 | `scripts/s14_feishu_entry.py --text ... --format text` | 只发送脚本 stdout 原文 |
+| 飞书上传 Excel | 本次上传 Excel | `scripts/s14_feishu_entry.py --excel ... --format text` | 只发送脚本 stdout 原文 |
+| 文字 + Excel | Excel 优先 | `scripts/s14_feishu_entry.py --excel ... --format text` | 只发送脚本 stdout 原文 |
 | 非 S14 消息 | 不运行 S14 | 普通回复 | 正常文本回复 |
