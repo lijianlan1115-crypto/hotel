@@ -1,40 +1,112 @@
-标准字段,中文字段别名,类型,模块,是否参与公式,计算/使用位置,聚合方式,支持时间粒度,时间字段要求,是否区分渠道,渠道规则,Excel是否建议必填,缺失处理
-hotel_id,酒店ID|酒店编号|门店ID,string,控制,否,输入过滤/报告展示,按输入优先/首个非空,全局,控制字段,否,全局控制字段,是,缺失时使用输入 hotel_id
-hotel_name,酒店名称|门店名称|酒店,string,控制,否,报告展示,首个非空,全局,控制字段,否,全局展示字段,否,缺失时展示 hotel_id
-platform,诊断渠道|渠道|平台|OTA渠道,enum,控制,是,渠道过滤/渠道区分,按行过滤；multi 不过滤,日/周/月/诊断周期,控制字段,是,必须能映射 fliggy/meituan/ctrip/qunar/douyin/multi 或中文渠道,是,缺失时整份 Excel 使用输入 platform；多渠道文件必须提供
-channel_source,渠道来源|渠道名称|平台名称,string,控制,否,报告展示/渠道说明,首个非空,日/周/月/诊断周期,控制字段,是,与 platform 对应：飞猪/美团/携程/去哪儿/抖音/多渠道,建议,缺失时由 platform 自动映射中文
-data_date,日期|营业日期|业务日期|统计日期|data_date|biz_date|date,date,控制,是,周期过滤,按 period_start/period_end 过滤,日/周/月/诊断周期,用于过滤 period_start 至 period_end；日数据填具体日期，月数据可填月初或月末,是,同一 Excel 可包含多渠道多日期，需按日期过滤,建议,缺失时整份 Excel 视为本次周期数据
-time_grain,时间粒度|统计粒度|数据粒度|time_grain,enum,控制,是,判断指标行是日/周/月/诊断周期数据，影响聚合解释,首个非空/按行读取,日/周/月/诊断周期,可选；不填默认按 data_date 的行级数据处理,是,同一文件多渠道多粒度时必须每行明确渠道和时间粒度,建议,缺失默认daily
-period_start_field,开始日期|周期开始|统计开始日期|period_start_field,date,控制,是,Excel行级周期开始日期，适用于周/月/自定义周期数据,按 period_start/period_end 过滤,周/月/诊断周期,有周期汇总行时建议提供,是,按渠道和周期过滤,否,缺失时使用 data_date 或输入 period_start
-period_end_field,结束日期|周期结束|统计结束日期|period_end_field,date,控制,是,Excel行级周期结束日期，适用于周/月/自定义周期数据,按 period_start/period_end 过滤,周/月/诊断周期,有周期汇总行时建议提供,是,按渠道和周期过滤,否,缺失时使用 data_date 或输入 period_end
-revpar,RevPAR|revpar|平均可出租客房收入|每间可售房收入,number,M01,是,_calculate_m01：revpar/200*0.4*20；收益封顶参考,平均值,日/周/月/诊断周期,建议提供 data_date；周期内多行会按聚合方式计算,是,按 platform/channel_source 分渠道计算,是,缺失按0参与计算并进入缺失字段
-adr,ADR|adr|平均房价|平均房费|销售均价,number,M01,是,_calculate_m01：adr/150*0.3*20,平均值,日/周/月/诊断周期,建议提供 data_date；周期内多行会按聚合方式计算,是,按 platform/channel_source 分渠道计算,是,缺失按0参与计算并进入缺失字段
-occupancy,出租率|入住率|过夜出租率|occupancy,ratio,M01,是,_calculate_m01：occupancy/0.85*0.3*20,平均值,日/周/月/诊断周期,建议提供 data_date；周期内多行会按聚合方式计算,是,按 platform/channel_source 分渠道计算,是,缺失按0参与计算并进入缺失字段
-room_revenue,门店收入|房费收入|PMS房费收入|销售额|room_revenue,number,M01,否,报告展示/收入结果辅助,求和,日/周/月/诊断周期,建议提供 data_date；周期内多行会按聚合方式计算,是,按渠道求和；PMS全店收入可不填渠道但不能和OTA渠道混算,建议,缺失不直接扣公式分
-sold_room_nights,已售间夜|出租间夜|入住间夜|PMS已售间夜|sold_room_nights,number,M01,否,报告展示/间夜结果辅助,求和,日/周/月/诊断周期,建议提供 data_date；周期内多行会按聚合方式计算,是,按渠道求和,否,缺失不直接扣公式分
-available_room_nights,可售间夜|可售房晚|可售房量|available_room_nights,number,M01,是,apply_cap_rules：缺失触发 C01 可售间夜封顶,求和,日/周/月/诊断周期,建议提供 data_date；周期内多行会按聚合方式计算,是,按渠道/周期求和,是,缺失触发封顶并进入缺失字段
-lost_orders,流失订单数|流失订单|lost_orders,number,M01/M03,是,_calculate_m03：lost_orders 越高扣分；M01流失辅助,求和,日/周/月/诊断周期,建议提供 data_date；周期内多行会按聚合方式计算,是,按渠道求和,建议,缺失按0处理
-lost_amount,流失金额|流失损失|lost_amount,number,M01,否,流失损失展示/后续封顶扩展,求和,日/周/月/诊断周期,建议提供 data_date；周期内多行会按聚合方式计算,是,按渠道求和,否,缺失不直接扣公式分
-exposure,曝光|曝光量|列表曝光|推广曝光|exposure,number,M02,是,_calculate_m02：exposure/10000*0.45*15,求和,日/周/月/诊断周期,建议提供 data_date；周期内多行会按聚合方式计算,是,必须按渠道区分，不能混合飞猪/美团曝光,是,缺失按0参与计算并进入缺失字段
-views,浏览|浏览量|详情浏览|访客数|views,number,M02,是,_calculate_m02：views/1200*0.35*15,求和,日/周/月/诊断周期,建议提供 data_date；周期内多行会按聚合方式计算,是,必须按渠道区分,是,缺失按0参与计算并进入缺失字段
-peer_rank,竞争排名分位|同行排名|peer_rank,ratio,M02,是,_calculate_m02：peer_rank 与0.3目标反向比较,平均值,日/周/月/诊断周期,建议提供 data_date；周期内多行会按聚合方式计算,是,按渠道竞争圈计算,否,缺失默认0.5
-booking_conversion_rate,预订转化率|曝光-浏览转化|曝光浏览转化率|booking_conversion_rate,ratio,M03,是,_calculate_m03：booking/0.08*0.4*15,平均值,日/周/月/诊断周期,建议提供 data_date；周期内多行会按聚合方式计算,是,按渠道漏斗计算,建议,缺失按0处理
-payment_conversion_rate,支付转化率|浏览-支付转化|浏览支付转化率|payment_conversion_rate,ratio,M03,是,_calculate_m03：payment/0.035*0.4*15,平均值,日/周/月/诊断周期,建议提供 data_date；周期内多行会按聚合方式计算,是,按渠道漏斗计算,是,缺失按0参与计算并进入缺失字段
-price_completeness,价格完整度|价格字段完整度|price_completeness,ratio,M04,是,_calculate_m04：price_completeness*0.35*15,平均值,日/周/月/诊断周期,建议提供 data_date；周期内多行会按聚合方式计算,是,按渠道价格字段计算,建议,缺失默认0.5
-inventory_health_rate,库存健康率|房态健康率|inventory_health_rate,ratio,M04,是,_calculate_m04：inventory_health_rate*0.35*15,平均值,日/周/月/诊断周期,建议提供 data_date；周期内多行会按聚合方式计算,是,按渠道库存/房态计算,建议,缺失默认0.5
-room_type_health_rate,房型健康率|房型结构健康率|room_type_health_rate,ratio,M04,是,_calculate_m04：room_type_health_rate*0.3*15,平均值,日/周/月/诊断周期,建议提供 data_date；周期内多行会按聚合方式计算,是,按渠道房型结构计算,建议,缺失默认0.5
-promo_amount,推广订单金额|推广预订金额|推广成交金额|promo_amount,number,M05,是,_calculate_m05：promo_amount/10000*0.3*10；ROI分子,求和,日/周/月/诊断周期,建议提供 data_date；周期内多行会按聚合方式计算,是,必须按渠道推广账户区分,建议,缺失按0处理
-promo_cost,推广花费|总花费|广告花费|promo_cost,number,M05,是,_calculate_m05：成本率和ROI；缺明细触发C05,求和,日/周/月/诊断周期,建议提供 data_date；周期内多行会按聚合方式计算,是,必须按渠道推广账户区分,建议,缺失按0并进入缺失字段
-promo_roi,ROI|推广ROI|promo_roi,number,M05,是,优先由 promo_amount/promo_cost 自动计算；否则取Excel ROI,自动计算/平均值,日/周/月/诊断周期,建议提供 data_date；周期内多行会按聚合方式计算,是,按渠道计算ROI，禁止跨渠道合并,否,缺失且无法计算则按0
-promo_detail_ready,推广明细是否完整|推广明细|promo_detail_ready,boolean,M05,是,apply_cap_rules：有花费但缺明细触发 C05,任一为真/最大值,日/周/月/诊断周期,建议提供 data_date；周期内多行会按聚合方式计算,是,按渠道判断推广明细完整度,建议,缺失视为False
-image_quality_rating,图片质量评级|图片质量|image_quality_rating,enum,M06,是,_calculate_m06：good/average/poor/unknown评分,首个非空,日/周/月/诊断周期,建议提供 data_date；周期内多行会按聚合方式计算,是,页面素材按渠道展示页区分,否,缺失默认unknown
-video_status,视频状态|video_status,enum,M06,是,_calculate_m06：complete/partial/missing/unknown评分,首个非空,日/周/月/诊断周期,建议提供 data_date；周期内多行会按聚合方式计算,是,按渠道展示页区分,否,缺失默认unknown
-room_selling_point_status,房型卖点状态|房型卖点|room_selling_point_status,enum,M06,是,_calculate_m06：complete/partial/poor/unknown评分,首个非空,日/周/月/诊断周期,建议提供 data_date；周期内多行会按聚合方式计算,是,按渠道房型页区分,否,缺失默认unknown
-entry_tag_quality,入口标签质量|入口标签|entry_tag_quality,enum,M06,是,_calculate_m06：complete/partial/poor/unknown评分,首个非空,日/周/月/诊断周期,建议提供 data_date；周期内多行会按聚合方式计算,是,按渠道入口标签区分,否,缺失默认unknown
-rating_total,平台评分|评分|点评分|rating_total,number,M07,是,_calculate_m07：rating_total/4.8*0.5*8,平均值,日/周/月/诊断周期,建议提供 data_date；周期内多行会按聚合方式计算,是,按渠道评分体系区分,是,缺失默认4.0并进入缺失字段
-bad_review_rate,差评率|低分评价率|bad_review_rate,ratio,M07,是,_calculate_m07：bad_review_rate 与0.03目标反向比较,平均值,日/周/月/诊断周期,建议提供 data_date；周期内多行会按聚合方式计算,是,按渠道评价体系区分,否,缺失默认0.08
-unreplied_reviews,未回复评价|未回复评价数|unreplied_reviews,number,M07,是,_calculate_m07：未回复越多扣分,求和,日/周/月/诊断周期,建议提供 data_date；周期内多行会按聚合方式计算,是,按渠道评价回复区分,否,缺失按0
-completed_actions,已完成动作|已完成整改|completed_actions,string,M08,是,_calculate_m08：有已完成和待完成动作得动作分,首个非空,日/周/月/诊断周期,建议提供 data_date；周期内多行会按聚合方式计算,是,动作可按渠道记录,否,缺失降低M08动作分
-pending_actions,待完成动作|待整改动作|pending_actions,string,M08,是,_calculate_m08：有已完成和待完成动作得动作分,首个非空,日/周/月/诊断周期,建议提供 data_date；周期内多行会按聚合方式计算,是,动作可按渠道记录,否,缺失降低M08动作分
-review_reason,复盘原因|异常原因|review_reason,string,M08,是,_calculate_m08：有复盘原因得复盘分,首个非空,日/周/月/诊断周期,建议提供 data_date；周期内多行会按聚合方式计算,是,复盘原因可按渠道记录,否,缺失降低M08复盘分
-field_completeness,字段完整度|数据完整度|field_completeness,ratio,M08,是,_calculate_m08 和 apply_cap_rules：低于0.7触发C07,平均值/自动计算,日/周/月/诊断周期,建议提供 data_date；周期内多行会按聚合方式计算,是,按渠道字段完整度计算,否,缺失时由runtime按关键字段自动计算
+标准字段,中文字段别名,类型
+hotel_id,酒店ID|酒店编号|门店ID,string
+hotel_name,酒店名称|门店名称|酒店,string
+platform,诊断渠道|渠道|平台|OTA渠道|channel|ota_channel,enum
+channel_source,渠道来源|渠道名称|平台名称,string
+data_date,日期|营业日期|业务日期|统计日期|data_date|biz_date|date,date
+time_grain,时间粒度|统计粒度|数据粒度|time_grain,enum
+period_start_field,开始日期|周期开始|统计开始日期|period_start_field,date
+period_end_field,结束日期|周期结束|统计结束日期|period_end_field,date
+revpar,RevPAR|revpar|平均可出租客房收入|每间可售房收入,number
+adr,ADR|adr|平均房价|平均房费|销售均价|客单价,number
+occupancy,出租率|入住率|过夜出租率|occupancy|occ,ratio
+room_revenue,门店收入|房费收入|PMS房费收入|销售额|订单金额|客房收入|room_revenue|revenue|gmv,number
+sold_room_nights,已售间夜|出租间夜|入住间夜|PMS已售间夜|售出间夜|间夜数|sold_room_nights|room_nights,number
+available_room_nights,可售间夜|可售房晚|可售房量|客房数|available_room_nights|available_rooms,number
+remaining_room_nights,剩余间夜|剩余房量|剩余可售房|remaining_room_nights|remaining_rooms,number
+paid_orders,支付订单|支付订单数|成交订单|成交订单数|订单数|paid_orders|payment_orders|orders|order_count,number
+peer_paid_orders,竞争圈支付订单|竞对支付订单|同行支付订单|竞争圈订单|竞对订单|peer_paid_orders|peer_orders|peer_avg_paid_orders,number
+order_mom,订单环比|支付订单环比|订单增长率|paid_orders_mom|orders_mom|order_mom,ratio
+room_revenue_target,收入目标|客房收入目标|revenue_target|room_revenue_target,number
+revenue_mom,收入环比|客房收入环比|销售额环比|revenue_mom|room_revenue_mom,ratio
+revenue_decline_months,收入连续下降月数|连续下降月数|revenue_decline_months|room_revenue_decline_months,number
+season_or_market_explained,季节或商圈可解释|季节因素说明|商圈因素说明|season_or_market_explained,boolean
+peer_revpar,竞争圈RevPAR|竞对RevPAR|同行RevPAR|peer_revpar|competitor_revpar|market_revpar,number
+revpar_3m_avg,近3月RevPAR均值|RevPAR近3月均值|近三月RevPAR|revpar_3m_avg|last_3m_revpar_avg,number
+peer_adr,竞争圈ADR|竞对ADR|同行ADR|peer_adr|competitor_adr|market_adr,number
+lost_orders,流失订单数|流失订单|取消订单数|lost_orders,number
+lost_amount,流失金额|流失损失|取消金额|lost_amount,number
+ota_share,OTA占比|OTA间夜占比|OTA收入占比|ota_share|ota_occupancy_share|ota_room_night_share,ratio
+ota_adr,OTA ADR|OTA平均房价|ota_adr|ota_avg_price,number
+direct_adr,直销ADR|会员ADR|散客ADR|门市ADR|direct_adr|member_adr|walkin_adr,number
+exposure,曝光|曝光量|列表曝光|展示次数|exposure,number
+peer_exposure,竞争圈曝光|竞对曝光|同行曝光|竞争圈曝光量|peer_exposure|peer_avg_exposure|competitor_exposure,number
+views,浏览|浏览量|详情浏览|访客数|UV|views,number
+peer_views,竞争圈浏览|竞对浏览|同行浏览|竞争圈浏览量|peer_views|peer_avg_views|competitor_views,number
+ad_exposure,广告曝光|付费曝光|推广曝光|ad_exposure|paid_exposure,number
+organic_exposure,自然曝光|免费曝光|非广告曝光|organic_exposure|non_ad_exposure|free_exposure,number
+ad_exposure_share,广告曝光占比|付费曝光占比|paid_exposure_share|ad_exposure_share,ratio
+entry_coverage_rate,入口覆盖率|入口标签覆盖率|标签覆盖率|筛选入口覆盖率|entry_coverage_rate|poi_tag_coverage|tag_coverage|entry_tag_score,ratio
+business_area_tag_status,商圈标签状态|商圈标签|business_area_tag_status,enum
+poi_status,POI状态|POI标签|定位状态|poi_status,enum
+facility_tag_status,设施标签状态|设施标签|facility_tag_status,enum
+exposure_7d_trend,曝光7日趋势|曝光趋势|曝光环比|exposure_7d_trend|exposure_mom,ratio
+views_7d_trend,浏览7日趋势|浏览趋势|浏览环比|views_7d_trend|views_mom,ratio
+booking_conversion_rate,预订转化率|曝光-浏览转化|曝光浏览转化率|booking_conversion_rate,ratio
+exposure_to_view_rate,曝光-浏览转化率|曝光浏览率|曝光到浏览率|exposure_to_view_rate,ratio
+peer_exposure_to_view_rate,竞争圈曝光浏览转化率|竞对曝光浏览转化率|peer_exposure_to_view_rate|peer_booking_conversion_rate,ratio
+payment_conversion_rate,支付转化率|浏览-支付转化|浏览支付转化率|payment_conversion_rate|pay_rate,ratio
+peer_payment_conversion_rate,竞争圈支付转化率|竞对支付转化率|同行支付转化率|peer_payment_conversion_rate|peer_view_to_pay_rate,ratio
+orders_low_days,订单低于竞对天数|订单低于竞争圈天数|orders_low_days|paid_orders_below_peer_days,number
+conversion_low_days,转化低于竞对天数|转化低于竞争圈天数|conversion_low_days|payment_conversion_below_peer_days,number
+order_structure_match_rate,订单结构匹配度|客源结构匹配度|order_structure_match_rate|customer_structure_match_rate,ratio
+order_structure_status,订单结构状态|客源结构状态|order_structure_status,enum
+sales_speed,销售速度|库存消耗速度|售卖速度|sell_through_rate|sales_speed,ratio
+room_type_health_rate,房型健康率|房型结构健康率|房型完整度|room_type_health_rate,ratio
+room_type_revpar_health,房型RevPAR健康率|房型RevPAR分层|高效房型占比|efficient_room_type_rate|room_type_revpar_health,ratio
+price_completeness,价格完整度|价格字段完整度|有价率|price_completeness,ratio
+price_band_coverage,价格带覆盖率|价格带覆盖|price_band_coverage,ratio
+activity_price_consistency,活动价一致性|活动价格一致性|价差一致性|rate_parity_score|price_consistency|activity_price_consistency,ratio
+reserved_room_rate,预留房占比|预留房比例|保留房比例|reserved_room_rate|reserved_room_ratio|reserve_room_rate,ratio
+inventory_health_rate,库存健康率|房态健康率|库存健康度|房态健康度|inventory_health_rate,ratio
+room_status_health_rate,房态健康率|房态可售率|room_status_health_rate,ratio
+competitor_price_power,竞对价格承受力|价格承受力|价格竞争力|price_tolerance_score|competitor_price_power,ratio
+promo_amount,推广订单金额|推广预订金额|推广成交金额|广告成交金额|promo_amount|promo_booking_amount|ad_booking_amount,number
+promo_cost,推广花费|总花费|广告花费|广告消耗|promo_cost,number
+promo_roi,ROI|推广ROI|广告ROI|promo_roi,number
+promo_orders,推广订单数|广告订单数|推广成交订单|promo_orders|promo_booking_orders|ad_orders,number
+promo_order_target,推广订单目标|广告订单目标|promo_order_target,number
+promo_clicks,推广点击量|广告点击量|点击量|promo_clicks|ad_clicks|clicks,number
+promo_exposure,推广曝光|广告曝光|付费曝光|promo_exposure,number
+promo_ctr,推广点击率|广告点击率|点击率|promo_ctr|ad_ctr|click_rate,ratio
+promo_cpc,推广CPC|广告CPC|点击单价|promo_cpc|ad_cpc|click_price,number
+promo_roi_target,推广ROI目标|ROI目标|roi_target|promo_roi_target,number
+promo_exposure_target,推广曝光目标|广告曝光目标|promo_exposure_target,number
+promo_cpc_target,推广CPC目标|CPC目标|cpc_target|promo_cpc_target,number
+promo_roi_7d_trend,推广ROI7日趋势|ROI趋势|ROI环比|promo_roi_7d_trend|roi_7d_trend,ratio
+promo_order_7d_trend,推广订单7日趋势|推广订单趋势|promo_order_7d_trend|promo_orders_7d_trend,ratio
+promo_detail_ready,推广明细是否完整|推广明细|promo_detail_ready,boolean
+hotel_info_score,酒店信息分|门店信息分|美团信息分|hotel_info_score|meituan_info_score|info_score,number
+hotel_name_keyword_status,酒店名称关键词状态|名称关键词|酒店名称状态|hotel_name_keyword_status|hotel_name_status,enum
+benefit_coverage_rate,权益覆盖率|权益配置覆盖率|benefit_coverage_rate|rights_coverage_rate,ratio
+rights_center_status,权益中心状态|权益中心|rights_center_status,enum
+invoice_status,发票状态|发票配置|invoice_status,enum
+business_travel_status,商旅状态|商旅配置|business_travel_status,enum
+public_benefit_traffic_status,公益流量状态|公益流量|public_benefit_traffic_status,enum
+image_quality_rating,图片质量评级|图片质量|image_quality_rating,enum
+video_status,视频状态|视频|video_status,enum
+highlight_status,亮点状态|亮点配置|highlight_status,enum
+room_name_status,房型名称状态|房型命名|room_name_status,enum
+room_description_status,房型描述状态|房型描述|room_description_status,enum
+room_selling_point_status,房型卖点状态|房型卖点|卖点状态|room_selling_point_status,enum
+entry_tag_quality,入口标签质量|入口标签|标签质量|entry_tag_quality,enum
+facility_tag_coverage,设施标签覆盖率|设施标签覆盖|facility_tag_coverage,ratio
+rating_total,平台评分|评分|点评分|rating_total,number
+peer_rating_total,竞争圈评分|竞对评分|同行评分|peer_rating_total|peer_rating|competitor_rating,number
+dianping_rating,大众点评评分|点评评分|dianping_rating|dp_rating,number
+review_count,点评数量|评价数量|评论数量|review_count|reviews|rating_count,number
+new_review_count,新增点评数|新增评价数|近30天新增评价|new_review_count|new_reviews_30d,number
+review_reply_rate,评价回复率|点评回复率|评论回复率|review_reply_rate|reply_rate,ratio
+bad_review_reply_rate,差评回复率|负面评价回复率|bad_review_reply_rate|negative_reply_rate,ratio
+bad_review_rate,差评率|低分评价率|bad_review_rate,ratio
+bad_review_tag_score,差评类型得分|差评标签得分|负面评价文本得分|bad_review_tag_score|negative_review_text_score,ratio
+good_keyword_usage_rate,好评卖点反哺率|好评关键词使用率|好评卖点使用率|good_keyword_usage_rate|review_keyword_to_page_rate,ratio
+good_review_keywords_used,好评关键词已反哺|好评卖点已使用|good_review_keywords_used,boolean
+unreplied_reviews,未回复评价|未回复评价数|未回复评论|unreplied_reviews,number
+field_completeness,字段完整度|数据完整度|field_completeness,ratio
+completed_actions,已完成动作|已整改事项|完成动作数|completed_actions|completed_action_count,number
+pending_actions,待处理动作|待整改事项|待处理动作数|pending_actions|pending_action_count,number
+action_completion_rate,动作完成率|整改完成率|action_completion_rate|p0_p1_action_completion_rate,ratio
+before_after_compare_ready,整改前后对比是否完整|前后对比完整|before_after_compare_ready|remediation_compare_ready,ratio
+anomaly_review_rate,异常复盘率|异常复盘完整率|anomaly_review_rate|exception_review_rate,ratio
+review_reason,复盘原因|问题原因|异常原因|review_reason|anomaly_reason,string
