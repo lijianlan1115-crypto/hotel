@@ -1,176 +1,86 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "S14 OpenClaw 独立诊断输入",
-  "description": "S14 只接收任务控制字段和受控数据源路径。事实数据必须由 runtime/data_fetcher.py 从数据库或上传 Excel 读取并映射，禁止把其他 Skill 输出作为输入。",
+  "title": "S14当前诊断输入",
+  "description": "先选择数据库或Excel。报告统一使用platform=multi，不接收渠道选择。",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "hotel_id",
-    "platform",
-    "period_start",
-    "period_end"
-  ],
+  "required": ["hotel_id", "data_source_mode"],
   "properties": {
     "data_source_mode": {
       "type": "string",
-      "enum": [
-        "database",
-        "excel_upload"
-      ],
-      "default": "database",
-      "description": "数据源模式。database 从 hotel_pricing 的 jd01_bookings、jd04_extensions、fact_daily_metrics、fact_monthly_metrics、fact_room_fee_daily、fact_room_status_snapshot 读取；excel_upload 读取 input_excel_path 并按 config/excel_field_mapping.yaml 做中文字段映射。"
+      "enum": ["database", "excel_upload"],
+      "description": "数据库模式或上传Excel模式。"
     },
     "input_excel_path": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "description": "Excel 上传文件路径。仅 data_source_mode=excel_upload 时允许并必填。"
+      "type": ["string", "null"],
+      "description": "Excel下载后的本地路径，仅excel_upload模式必填。"
     },
     "hotel_id": {
       "type": "string",
       "minLength": 1,
-      "maxLength": 64,
-      "description": "酒店ID。仅作为数据库查询条件，不承载诊断事实。"
+      "default": "puyue"
     },
     "hotel_name": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "maxLength": 128,
-      "description": "酒店名称，可为空；正式名称以数据库为准。"
+      "type": ["string", "null"],
+      "default": "璞悦·奢电竞酒店(贵阳花溪公园店)"
     },
     "platform": {
       "type": "string",
-      "enum": [
-        "fliggy",
-        "meituan",
-        "ctrip",
-        "qunar",
-        "douyin",
-        "multi"
-      ],
-      "description": "诊断渠道。multi 表示多渠道汇总，仍由 S14 自己按渠道从受控数据源读取。"
+      "const": "multi",
+      "default": "multi",
+      "description": "当前固定为整体诊断，不区分渠道。"
     },
     "channel_source": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "enum": [
-        "飞猪",
-        "美团",
-        "携程",
-        "去哪儿",
-        "抖音",
-        "多渠道",
-        null
-      ],
-      "description": "渠道中文名；为空时由 config/fields.yaml 的 platforms 映射补齐。"
+      "type": ["string", "null"],
+      "enum": ["整体诊断", null],
+      "default": "整体诊断"
     },
     "channel_mode": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "enum": [
-        "single",
-        "multi",
-        null
-      ],
-      "description": "platform=multi 时必须按 multi 处理。"
+      "type": ["string", "null"],
+      "enum": ["multi", null],
+      "default": "multi"
     },
     "period_start": {
-      "type": "string",
+      "type": ["string", "null"],
       "format": "date",
-      "description": "诊断开始日期。"
+      "description": "为空时取最近30天。"
     },
     "period_end": {
-      "type": "string",
+      "type": ["string", "null"],
       "format": "date",
-      "description": "诊断结束日期，必须大于等于 period_start。"
-    },
-    "image_quality_rating": {
-      "type": "string",
-      "enum": [
-        "good",
-        "average",
-        "poor",
-        "unknown"
-      ],
-      "default": "unknown",
-      "description": "仅允许作为人工评级控制项；正式页面素材事实仍应落库后由 S14 读取。"
-    },
-    "owner_user_id": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "maxLength": 128,
-      "description": "负责人ID，用于报告任务责任人展示。"
+      "description": "为空时取当天。"
     },
     "output_dir": {
       "type": "string",
-      "default": "./outputs",
-      "description": "HTML 报告输出目录。"
+      "default": "/var/lib/ota-marketing-diagnosis/reports"
     },
     "public_base_url": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "default": null,
-      "description": "报告 URL 前缀；为空时返回本地 file URI。"
+      "type": ["string", "null"],
+      "default": "http://47.108.200.194:8081/s14-reports"
     },
     "dry_run": {
       "type": "boolean",
-      "default": true,
-      "description": "S14 永远只做诊断和报告，真实写动作必须由其他审批链处理。"
+      "default": true
     }
   },
   "not": {
     "anyOf": [
-      {
-        "required": [
-          "metrics"
-        ]
-      },
-      {
-        "required": [
-          "business_fields"
-        ]
-      },
-      {
-        "required": [
-          "upstream_skill_output"
-        ]
-      },
-      {
-        "required": [
-          "json_payload"
-        ]
-      },
-      {
-        "required": [
-          "manual_diagnosis_input"
-        ]
-      }
+      {"required": ["metrics"]},
+      {"required": ["business_fields"]},
+      {"required": ["upstream_skill_output"]},
+      {"required": ["json_payload"]},
+      {"required": ["manual_diagnosis_input"]}
     ]
   },
   "allOf": [
     {
       "if": {
         "properties": {
-          "data_source_mode": {
-            "const": "excel_upload"
-          }
+          "data_source_mode": {"const": "excel_upload"}
         }
       },
       "then": {
-        "required": [
-          "input_excel_path"
-        ]
+        "required": ["input_excel_path"]
       }
     }
   ]
