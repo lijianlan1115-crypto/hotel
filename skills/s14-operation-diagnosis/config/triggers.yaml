@@ -1,6 +1,6 @@
 # S14 trigger and routing contract.
-# Feishu Bot / OpenClaw Agent should read this file to decide whether to call
-# S14OperationDiagnosis. Business scoring still happens only in runtime/.
+# The Feishu entry first asks only for data source: database or uploaded Excel.
+# The current report is a unified diagnosis and no longer asks for an OTA channel.
 
 skill_id: s14-operation-diagnosis
 
@@ -10,9 +10,14 @@ trigger_policy:
   case_sensitive: false
   require_hotel_id: false
   default_hotel_id: puyue
-  default_platform: fliggy
-  default_period_days: 10
-  note: "The entry service listens to Feishu. This file only defines when the entry service should route a message to this Skill."
+  default_platform: multi
+  default_period_days: 30
+  source_selection_required: true
+  source_options:
+    - database
+    - excel
+  excel_attachment_wait_seconds: 600
+  note: "S14诊断先选择数据库或Excel；统一按platform=multi生成整体报告，不再询问渠道。"
 
 trigger_phrases:
   - S14诊断
@@ -24,33 +29,6 @@ trigger_phrases:
   - OTA全面诊断
   - 生成诊断报告
   - 查看诊断报告
-  - 飞猪诊断
-  - 美团诊断
-  - 携程诊断
-  - 去哪儿诊断
-  - 抖音诊断
-  - 多渠道诊断
-
-platform_aliases:
-  fliggy:
-    - 飞猪
-    - fliggy
-  meituan:
-    - 美团
-    - meituan
-  ctrip:
-    - 携程
-    - ctrip
-  qunar:
-    - 去哪儿
-    - qunar
-  douyin:
-    - 抖音
-    - douyin
-  multi:
-    - 多渠道
-    - 全渠道
-    - multi
 
 input_extraction:
   required_output_fields:
@@ -60,12 +38,25 @@ input_extraction:
     - period_end
   allowed_defaults:
     hotel_id: puyue
-    platform: fliggy
+    platform: multi
   date_patterns:
     - "\\d{4}-\\d{2}-\\d{2}"
   fallback_period:
     mode: latest_n_days
-    days: 10
+    days: 30
+
+source_flow:
+  initial_trigger_reply: source_selection_card
+  database_action: run_immediately
+  excel_action: wait_for_attachment
+  attachment_identity:
+    - chat_id
+    - sender_id
+  attachment_requires_mention: false
+  attachment_extensions:
+    - .xlsx
+    - .xlsm
+  state_ttl_seconds: 600
 
 reply_policy:
   use_adapter_method: build_feishu_card_reply
@@ -73,6 +64,7 @@ reply_policy:
   reply_field: feishu_card
   fallback_reply_field: feishu_message
   msg_type: interactive
+  include_data_source: true
   bot_must_not_format_business_result: true
   force_fresh_run: true
   forbid_cached_agent_text: true
@@ -83,4 +75,4 @@ reply_policy:
     - module_scores
     - caps
     - missing_fields
-  note: "The entry service must call build_feishu_card_reply(result) or send result.feishu_card first. Do not send result.feishu_message unless interactive cards are unavailable."
+  note: "数据库和Excel均调用当前ota-marketing-diagnosis的23项HTML报告；飞书回复必须标明数据来源。"
