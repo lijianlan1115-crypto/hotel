@@ -1,84 +1,57 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "S14 OpenClaw 独立诊断输出",
+  "title": "S14当前23项诊断输出",
+  "description": "数据库和Excel均由ota-marketing-diagnosis生成。旧M01-M08模块不再是输出契约。",
   "type": "object",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "required": [
     "status",
     "skill_id",
     "run_id",
     "hotel_id",
+    "hotel_name",
     "platform",
-    "channel_mode",
-    "raw_score",
+    "channel_source",
+    "period_start",
+    "period_end",
     "final_score",
     "risk_level",
-    "field_completeness",
-    "module_scores",
-    "caps",
-    "missing_fields",
-    "formula_source",
     "data_source",
+    "formula_source",
     "execution_steps",
-    "calculated_fields",
-    "mapped_fields",
-    "field_contract_file",
-    "field_mapping_source",
-    "feishu_message",
-    "feishu_card",
-    "approval_required",
-    "dry_run",
     "report_file_path",
-    "report_url"
+    "report_url",
+    "feishu_message",
+    "feishu_card"
   ],
   "properties": {
     "status": {
       "type": "string",
-      "enum": [
-        "ok",
-        "partial",
-        "failed"
-      ]
+      "enum": ["ok", "partial", "failed"]
     },
     "skill_id": {
       "type": "string",
       "const": "s14-operation-diagnosis"
     },
     "run_id": {
-      "type": "string"
+      "type": "string",
+      "minLength": 1
     },
     "hotel_id": {
-      "type": "string"
+      "type": "string",
+      "minLength": 1
     },
     "hotel_name": {
-      "type": [
-        "string",
-        "null"
-      ]
+      "type": "string",
+      "minLength": 1
     },
     "platform": {
       "type": "string",
-      "enum": [
-        "fliggy",
-        "meituan",
-        "ctrip",
-        "qunar",
-        "douyin",
-        "multi"
-      ]
+      "const": "multi"
     },
     "channel_source": {
-      "type": [
-        "string",
-        "null"
-      ]
-    },
-    "channel_mode": {
       "type": "string",
-      "enum": [
-        "single",
-        "multi"
-      ]
+      "const": "整体诊断"
     },
     "period_start": {
       "type": "string",
@@ -89,9 +62,8 @@
       "format": "date"
     },
     "raw_score": {
-      "type": "number",
-      "minimum": 0,
-      "maximum": 100
+      "type": ["number", "null"],
+      "minimum": 0
     },
     "final_score": {
       "type": "number",
@@ -100,79 +72,38 @@
     },
     "risk_level": {
       "type": "string",
-      "enum": [
-        "low",
-        "medium",
-        "high"
-      ]
+      "enum": ["low", "medium", "high"]
     },
-    "field_completeness": {
-      "type": "number",
-      "minimum": 0,
-      "maximum": 1
+    "data_source": {
+      "type": "string",
+      "enum": ["database", "excel_upload"]
+    },
+    "visual_diagnosis": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "minItems": 23,
+          "items": {
+            "type": "object"
+          }
+        },
+        "raw_score": {
+          "type": ["number", "null"]
+        },
+        "normalized_score": {
+          "type": ["number", "null"]
+        }
+      },
+      "required": ["items"]
     },
     "module_scores": {
       "type": "array",
-      "minItems": 8,
-      "maxItems": 8,
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "module_id",
-          "name",
-          "score",
-          "weight",
-          "confidence",
-          "reasons"
-        ],
-        "properties": {
-          "module_id": {
-            "type": "string",
-            "enum": [
-              "M01",
-              "M02",
-              "M03",
-              "M04",
-              "M05",
-              "M06",
-              "M07",
-              "M08"
-            ]
-          },
-          "name": {
-            "type": "string"
-          },
-          "score": {
-            "type": "number",
-            "minimum": 0
-          },
-          "weight": {
-            "type": "number",
-            "minimum": 0
-          },
-          "confidence": {
-            "type": "string",
-            "enum": [
-              "high",
-              "medium",
-              "low"
-            ]
-          },
-          "reasons": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        }
-      }
+      "maxItems": 0,
+      "description": "旧M01-M08兼容字段，当前固定为空数组。"
     },
     "caps": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
+      "type": "array"
     },
     "missing_fields": {
       "type": "array",
@@ -182,117 +113,54 @@
     },
     "formula_source": {
       "type": "string",
-      "const": "runtime/calculator.py"
-    },
-    "data_source": {
-      "type": "string",
-      "enum": [
-        "hotel_pricing_tables",
-        "s14_operating_metrics",
-        "excel_upload"
-      ]
+      "pattern": "visual_diagnosis_v14\\.py$"
     },
     "execution_steps": {
       "type": "array",
-      "minItems": 7,
+      "minItems": 3,
       "items": {
         "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "step",
-          "status",
-          "detail"
-        ],
+        "required": ["step", "status", "detail"],
         "properties": {
-          "step": {
-            "type": "string",
-            "enum": [
-              "S01_VALIDATE_INPUT",
-              "S02_FETCH_SOURCE",
-              "S03_NORMALIZE_FIELDS",
-              "S04_CALCULATE_MODULES",
-              "S05_APPLY_CAP_RULES",
-              "S06_RENDER_REPORT",
-              "S07_VALIDATE_OUTPUT"
-            ]
-          },
+          "step": {"type": "string"},
           "status": {
             "type": "string",
-            "enum": [
-              "ok",
-              "partial",
-              "failed"
-            ]
+            "enum": ["ok", "partial", "failed"]
           },
-          "detail": {
-            "type": "string"
-          }
-        }
+          "detail": {"type": "string"}
+        },
+        "additionalProperties": true
       }
-    },
-    "calculated_fields": {
-      "type": "array",
-      "minItems": 25,
-      "items": {
-        "type": "string"
-      },
-      "description": "Fields that must be fetched, normalized, calculated, shown, or marked missing by the strict S14 process."
-    },
-    "mapped_fields": {
-      "type": "array",
-      "minItems": 25,
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "field",
-          "role",
-          "source",
-          "formula_module"
-        ],
-        "properties": {
-          "field": {
-            "type": "string"
-          },
-          "role": {
-            "type": "string",
-            "enum": [
-              "control",
-              "time",
-              "formula",
-              "evidence",
-              "cap_rule"
-            ]
-          },
-          "source": {
-            "type": "string"
-          },
-          "formula_module": {
-            "type": "string"
-          }
-        }
-      },
-      "description": "Trace table proving which normalized fields are allowed and where each field is used."
     },
     "field_contract_file": {
       "type": "string",
-      "const": "references/excel_field_mapping.xlsx"
+      "const": "S14酒店诊断_中文表头上传模板.xlsx"
     },
     "field_mapping_source": {
       "type": "string",
-      "const": "config/excel_field_mapping.yaml"
+      "const": "ota-marketing-diagnosis/excel_loader_v2.py"
+    },
+    "approval_required": {
+      "type": "boolean"
+    },
+    "dry_run": {
+      "type": "boolean"
+    },
+    "report_file_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "report_url": {
+      "type": "string",
+      "pattern": "^https?://"
     },
     "feishu_message": {
       "type": "string",
-      "description": "Legacy strict Feishu reply text. Use only as fallback when interactive cards are unavailable."
+      "minLength": 1
     },
     "feishu_card": {
       "type": "object",
-      "description": "Primary Feishu interactive card payload. Bot should send this before considering feishu_message fallback.",
-      "required": [
-        "msg_type",
-        "card"
-      ],
+      "required": ["msg_type", "card"],
       "properties": {
         "msg_type": {
           "type": "string",
@@ -303,20 +171,6 @@
         }
       },
       "additionalProperties": true
-    },
-    "approval_required": {
-      "type": "boolean",
-      "const": true
-    },
-    "dry_run": {
-      "type": "boolean",
-      "const": true
-    },
-    "report_file_path": {
-      "type": "string"
-    },
-    "report_url": {
-      "type": "string"
     }
   }
 }
