@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """S14 Feishu entry wrapper.
 
-Routing:
-- ``--excel /path/to/file.xlsx``: use the uploaded Excel as the data source.
-- ``--text "执行S14诊断"``: use database mode when S14 is triggered.
-- ``--format card``: print Feishu interactive card JSON with clickable button.
-- Non-S14 text gets a normal text reply instead of the S14 error template.
+Group flow:
+1. Text ``S14诊断`` -> return database / Excel source-selection card.
+2. Button callback -> pass ``--source-choice database|excel`` with chat/sender ids.
+3. When Excel was chosen, the next attachment message can call ``--excel`` with
+   the same chat/sender ids; no @ mention is required.
+
+All diagnoses use the unified ``platform=multi`` report and do not ask for an OTA
+channel.
 """
 
 from __future__ import annotations
@@ -53,13 +56,29 @@ def _normal_reply(text: str) -> str:
         return f"今天是 {now:%Y-%m-%d}。"
     if any(word in current for word in ("几点", "时间", "现在时间")):
         return f"现在时间是 {now:%Y-%m-%d %H:%M:%S}。"
-    return "收到。普通问题可以正常回复；需要生成 S14 OTA 诊断报告时，请发送“S14诊断”或上传诊断 Excel。"
+    return "收到。需要生成 S14 诊断报告时，请发送“S14诊断”。"
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run S14 Feishu reply entry")
     parser.add_argument("--text", default="", help="Feishu text message")
     parser.add_argument("--excel", default="", help="Downloaded Feishu Excel path")
+    parser.add_argument(
+        "--source-choice",
+        default="",
+        choices=("", "database", "excel", "数据库", "上传Excel"),
+        help="Source-selection button callback value.",
+    )
+    parser.add_argument(
+        "--chat-id",
+        default=os.environ.get("FEISHU_CHAT_ID", ""),
+        help="Feishu chat_id used to associate a later attachment.",
+    )
+    parser.add_argument(
+        "--sender-id",
+        default=os.environ.get("FEISHU_SENDER_ID", ""),
+        help="Feishu sender open_id/user_id used to associate a later attachment.",
+    )
     parser.add_argument(
         "--format",
         choices=("text", "card"),
@@ -77,15 +96,32 @@ def main() -> int:
         handle_feishu_excel_card,
         handle_feishu_text_message,
         handle_feishu_text_message_card,
+        handle_source_choice,
+        handle_source_choice_card,
     )
 
-    if args.excel:
-        reply = handle_feishu_excel_card(args.excel) if args.format == "card" else handle_feishu_excel(args.excel)
+    identity = {
+        "chat_id": args.chat_id or None,
+        "sender_id": args.sender_id or None,
+    }
+
+    if args.source_choice:
+        reply = (
+            handle_source_choice_card(args.source_choice, **identity)
+            if args.format == "card"
+            else handle_source_choice(args.source_choice, **identity)
+        )
+    elif args.excel:
+        reply = (
+            handle_feishu_excel_card(args.excel, **identity)
+            if args.format == "card"
+            else handle_feishu_excel(args.excel, **identity)
+        )
     elif args.text:
         reply = (
-            handle_feishu_text_message_card(args.text)
+            handle_feishu_text_message_card(args.text, **identity)
             if args.format == "card"
-            else handle_feishu_text_message(args.text)
+            else handle_feishu_text_message(args.text, **identity)
         )
         if reply is None:
             reply = _normal_reply(args.text)
